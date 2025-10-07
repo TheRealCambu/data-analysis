@@ -122,8 +122,8 @@ def plot_multiple_ber(
                     plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
                     vector_lengths.append(x_data_valid)
 
-    temp_min = np.nanmin([np.nanmin(x) for x in vector_lengths if len(x) > 0])
-    temp_max = np.nanmax([np.nanmax(x) for x in vector_lengths if len(x) > 0])
+    temp_min = np.min([np.min(x) for x in vector_lengths if len(x) > 0])
+    temp_max = np.max([np.max(x) for x in vector_lengths if len(x) > 0])
     plt.xticks(np.arange(temp_min, temp_max + 0.5, 0.5))
 
     # Reference lines
