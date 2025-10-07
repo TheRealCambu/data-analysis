@@ -1,0 +1,22 @@
+# ------------------------------
+# Data and config files
+# ------------------------------
+*.csv
+*.png
+*.yml
+*.yaml
+*.npz
+
+# ------------------------------
+# Python cache and compiled files
+# ------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# ------------------------------
+# Project result folders (ignored)
+# ------------------------------
+Lab results/
+Simulation Sweeps/
