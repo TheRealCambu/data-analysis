@@ -29,7 +29,9 @@ def filter_outliers(
 ):
     return [
         [
-            val if lower_threshold <= val <= upper_threshold else np.nan for val in per_x_values_values
+            val if lower_threshold <= val <= upper_threshold else np.nan
+            for val in per_x_values
         ]
-        for per_x_values_values in input_values
+        for per_x_values in input_values
     ]
+

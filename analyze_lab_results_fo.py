@@ -29,7 +29,6 @@ def plot_multiple_ber(
         x_values_sorted_indices_list: List[np.ndarray],
         x_values_data_list: List[np.ndarray],
         extra_title_label: str,
-        xlabel: str,
         legend_labels: List[str],
         theory_value: float,
         save_plot: bool,
@@ -56,48 +55,76 @@ def plot_multiple_ber(
     markers = ['o', 's', 'v', '^', 'd', 'x']
     colors = plt.cm.tab10(np.linspace(0, 1, len(data_vectors)))
 
+    vector_lengths = []
     for idx, (data_vector, x_idx, x_data, legend_label) in enumerate(zip(
             data_vectors, x_values_sorted_indices_list, x_values_data_list,
             legend_labels
     )):
         # Filter outliers
-        if (
-                ((filter_threshold < 5e-1 and "ber" in kind_of_plot) or
-                 (filter_threshold < 1.5 and "ber" not in kind_of_plot)) and not plot_max
-        ):
-            filtered_data_tot = filter_outliers(
-                upper_threshold=filter_threshold,
-                input_values=data_vector[x_idx],
+        if ((filter_threshold < 5e-1 and "ber" in kind_of_plot) or
+            (filter_threshold < 1.5 and "ber" not in kind_of_plot)) and not plot_max:
+            filtered_data_tot = np.array(
+                filter_outliers(
+                    upper_threshold=filter_threshold,
+                    input_values=data_vector[x_idx]
+                )
             )
         else:
             filtered_data_tot = np.array(data_vector[x_idx])
 
+        # Each row corresponds to a single x value with multiple samples
+        # We keep a row only if it has at least one non-NaN and nonzero value
+        valid_mask = np.any(~np.isnan(filtered_data_tot) & (filtered_data_tot != 0), axis=1)
+
+        # Apply mask to both x and data
+        x_data_valid = x_data[valid_mask]
+        filtered_data_valid = filtered_data_tot[valid_mask, :]
+
         # Mean, min, max
-        data_mean = np.nanmean(filtered_data_tot, axis=1)
-        data_min = np.nanmin(filtered_data_tot, axis=1)
-        data_max = np.nanmax(filtered_data_tot, axis=1)
+        data_mean = np.nanmean(filtered_data_valid, axis=1)
+        data_min = np.nanmin(filtered_data_valid, axis=1)
+        data_max = np.nanmax(filtered_data_valid, axis=1)
 
         # Plot each dataset
         marker = markers[idx % len(markers)]
         color = colors[idx]
 
-        # plt.xticks(np.arange(np.min(x_data) - 0.5, np.max(x_data) + 0.5, 0.5))
-        multiplier_for_evm = 1 if 'ber' in kind_of_plot else 100
-        if plot_max:
-            mask = data_max <= filter_threshold
-            x_data_filtered = x_data[mask]
-            filtered_data_max = data_max[mask]
-            plt.semilogy(
-                x_data_filtered,
-                filtered_data_max * multiplier_for_evm,
-                marker + '-',
-                color=color,
-                label=f"{legend_label}"
-            )
+        if 'ber' in kind_of_plot:
+            if plot_max:
+                mask = (data_max <= filter_threshold) & (data_max > 1e-32)
+                x_data_filtered = x_data_valid[mask]
+                filtered_data_max = data_max[mask]
+                if filtered_data_max.shape[0] > 2:
+                    plt.semilogy(
+                        x_data_filtered, filtered_data_max, marker + '-',
+                        color=color, label=f"{legend_label}"
+                    )
+                    vector_lengths.append(x_data_filtered)
+            else:
+                if data_mean.shape[0] > 2:
+                    plt.semilogy(x_data_valid, data_mean, marker + '-', color=color, label=f"{legend_label}")
+                    plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
+                    vector_lengths.append(x_data_valid)
         else:
-            plt.plot(x_data, data_mean * multiplier_for_evm, marker + '-', color=color, label=f"{legend_label}")
-            plt.fill_between(x_data, data_min * multiplier_for_evm, data_max * multiplier_for_evm,
-                             alpha=0.2, color=color)
+            if plot_max:
+                mask = (data_max <= filter_threshold) & (data_max > 1e-32)
+                x_data_filtered = x_data_valid[mask]
+                filtered_data_max = data_max[mask]
+                if filtered_data_max.shape[0] > 2:
+                    plt.plot(
+                        x_data_filtered, filtered_data_max * 100, marker + '-',
+                        color=color, label=f"{legend_label}"
+                    )
+                    vector_lengths.append(x_data_filtered)
+            else:
+                if data_mean.shape[0] > 2:
+                    plt.plot(x_data_valid, data_mean * 100, marker + '-', color=color, label=f"{legend_label}")
+                    plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
+                    vector_lengths.append(x_data_valid)
+
+    temp_min = np.nanmin([np.nanmin(x) for x in vector_lengths if len(x) > 0])
+    temp_max = np.nanmax([np.nanmax(x) for x in vector_lengths if len(x) > 0])
+    plt.xticks(np.arange(temp_min, temp_max + 0.5, 0.5))
 
     # Reference lines
     if "ber" in kind_of_plot:
@@ -117,7 +144,7 @@ def plot_multiple_ber(
         )
 
     # Labels and title
-    plt.xlabel(xlabel)
+    plt.xlabel("Frequency Offset [GHz]")
     plt.ylabel(label_info["ylabel"])
     plt.title(
         f"{'Maximum filtered' if plot_max else 'Average'} {label_info['title']}"
@@ -142,25 +169,16 @@ def plot_multiple_ber(
     plt.show()
 
 
-root_folder = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico\Tesi\Codes "
-               r"for Analyzing data\Lab results\v4 - Processed Datasets -- Final OPT")
+root_folder = r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT"
 tr_algo_list = ["Gardner", "Frequency Domain"]
-baud_rate_and_mod_format_list = ["30GBd QPSK"]
+# baud_rate_and_mod_format_list = ["30GBd QPSK"]
 # baud_rate_and_mod_format_list = ["34.28GBd QPSK"]
-# baud_rate_and_mod_format_list = ["30GBd 16QAM"]
+baud_rate_and_mod_format_list = ["30GBd 16QAM"]
 # baud_rate_and_mod_format_list = ["34.28GBd 16QAM"]
 
 # baud_rate_and_mod_format_list = ["40GBd QPSK"]
 
-plot_type = 'rop'
-if plot_type == 'fo':
-    xlabel = 'Frequency Offset [GHz]'
-elif plot_type == 'rop':
-    xlabel = 'ROP [dBm]'
-elif plot_type == 'osnr':
-    xlabel = 'OSNR [dB] per 0.1 nm'
-else:
-    raise ValueError("Plot type not supported. Choose between 'fo', 'rop', or 'osnr'.")
+plot_type = 'fo'
 folder_to_store_images = os.path.join(root_folder, "Final Plots", plot_type.upper())
 
 files_dict = {
@@ -228,7 +246,8 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
             # Apply personal matplotlib settings
             apply_plt_personal_settings()
 
-            for kind_of_plot in ['ber', 'evm', 'ber_evm']:
+            # for kind_of_plot in ['ber', 'evm', 'ber_evm']:
+            for kind_of_plot in ['ber', 'evm']:
                 if kind_of_plot == 'ber':
                     theory_value = ber_theory
                 elif kind_of_plot == 'evm':
@@ -244,25 +263,24 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
                         temp = title_label_for_plot_tot + ', Y Pol)'
                     else:
                         temp = title_label_for_plot_tot + ')'
+
                     # Plot both algorithms
-                    print(data_gardner)
                     plot_multiple_ber(
                         kind_of_plot=kind_of_plot,
                         data_vectors=[data_gardner[key], data_freqdom[key]],
-                        filter_threshold=5e-1 if 'ber' in kind_of_plot else 1.6,
-                        # filter_threshold=3e-2 if 'ber' in kind_of_plot else 0.3,
+                        # filter_threshold=5e-1 if 'ber' in kind_of_plot else 1.6,
+                        filter_threshold=3e-2 if 'ber' in kind_of_plot else 0.25,
                         fec_threshold=2e-2,
                         filename=os.path.basename(gardner_file),
                         x_values_sorted_indices_list=[x_values_sorted_indices_gardner, x_values_sorted_indices_fd],
                         x_values_data_list=[x_values_data_gardner, x_values_data_fd],
                         extra_title_label=temp,
-                        xlabel=xlabel,
                         legend_labels=["GardnerTimeRec", "FDTimeRec"],
                         theory_value=theory_value,
-                        save_plot=False,
+                        save_plot=True,
                         directory_to_save_images=folder_to_store_images,
                         base_string_for_saving_image=f"{key}_vs_fo",
-                        plot_max=False
+                        plot_max=True
                     )
 
 # tr_algo_list = ["Gardner", "Frequency Domain"]
