@@ -175,7 +175,6 @@ tr_algo_list = ["Gardner", "Frequency Domain"]
 # baud_rate_and_mod_format_list = ["34.28GBd QPSK"]
 baud_rate_and_mod_format_list = ["30GBd 16QAM"]
 # baud_rate_and_mod_format_list = ["34.28GBd 16QAM"]
-
 # baud_rate_and_mod_format_list = ["40GBd QPSK"]
 
 plot_type = 'fo'
@@ -277,7 +276,7 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
                         extra_title_label=temp,
                         legend_labels=["GardnerTimeRec", "FDTimeRec"],
                         theory_value=theory_value,
-                        save_plot=True,
+                        save_plot=False,
                         directory_to_save_images=folder_to_store_images,
                         base_string_for_saving_image=f"{key}_vs_fo",
                         plot_max=True

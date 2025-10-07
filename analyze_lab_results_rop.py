@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from commun_utils.utils import apply_plt_personal_settings, filter_outliers
+from matplotlib.ticker import MultipleLocator
 
 
 def plot_multiple_ber(
@@ -38,6 +39,9 @@ def plot_multiple_ber(
     }
     label_info = label_dict.get(kind_of_plot, label_dict["ber"])
     plt.figure()
+    if kind_of_plot == 'evm':
+        # Set y-axis tick interval to 5
+        plt.gca().yaxis.set_major_locator(MultipleLocator(10))
     markers = ['o', 's', 'v', '^', 'd', 'x']
     colors = plt.cm.tab10(np.linspace(0, 1, len(data_vectors)))
     temp = ""
@@ -106,8 +110,7 @@ def plot_multiple_ber(
                 mask = (data_min <= filter_threshold) & (data_min > 1e-32)
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_min = data_min[mask]
-                plt.semilogy(x_data_filtered, filtered_data_min * 100, marker + '-', color=color,
-                             label=f"{legend_label}")
+                plt.plot(x_data_filtered, filtered_data_min * 100, marker + '-', color=color, label=f"{legend_label}")
                 temp = 'Minimum filtered'
                 vector_lengths.append(x_data_filtered)
             else:
@@ -135,7 +138,6 @@ def plot_multiple_ber(
     plt.grid(True, which="both")
     plt.tight_layout()
 
-    # Save (after show() or before, both fine)
     if save_plot:
         image_name = filename.replace("PROCESSED_rop_sweep", "").replace(".npz", "")
         if alternative_plot in ["min", "max"]:
@@ -161,23 +163,23 @@ apply_plt_personal_settings()
 
 # One .npz per algorithm and configuration
 files_dict = {
-    "30GBd QPSK": {
-        "Gardner": os.path.join(root_folder, "Gardner", "30GBd QPSK", "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz"),
-        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd QPSK",
-                                         "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz")
-    },
+    # "30GBd QPSK": {
+    #     "Gardner": os.path.join(root_folder, "Gardner", "30GBd QPSK", "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz"),
+    #     "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd QPSK",
+    #                                      "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz")
+    # },
     "30GBd 16QAM": {
         "Gardner": os.path.join(root_folder, "Gardner", "30GBd 16QAM",
                                 "PROCESSED_rop_sweep_30GBd_DP_16QAM_w_dpe_v1.npz"),
         "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd 16QAM",
                                          "PROCESSED_rop_sweep_30GBd_DP_16QAM_w_dpe_v1.npz")
     },
-    "34.28GBd QPSK": {
-        "Gardner": os.path.join(root_folder, "Gardner", "34.28GBd QPSK",
-                                "PROCESSED_rop_sweep_34_28GBd_DP_QPSK_w_dpe_v1.npz"),
-        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd QPSK",
-                                         "PROCESSED_rop_sweep_34_28GBd_DP_QPSK_w_dpe_v1.npz")
-    },
+    # "34.28GBd QPSK": {
+    #     "Gardner": os.path.join(root_folder, "Gardner", "34.28GBd QPSK",
+    #                             "PROCESSED_rop_sweep_34_28GBd_DP_QPSK_w_dpe_v1.npz"),
+    #     "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd QPSK",
+    #                                      "PROCESSED_rop_sweep_34_28GBd_DP_QPSK_w_dpe_v1.npz")
+    # },
     "34.28GBd 16QAM": {
         "Gardner": os.path.join(root_folder, "Gardner", "34.28GBd 16QAM",
                                 "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz"),
@@ -215,8 +217,8 @@ for baud_rate_and_mod_format, algo_files in files_dict.items():
         x_values_sorted_indices_fd = np.argsort(fd_data)
         x_values_data_fd = fd_data[x_values_sorted_indices_fd]
 
-        for kind_of_plot in ['ber', 'evm', 'ber_evm']:
-            # for kind_of_plot in ['ber']:
+        # for kind_of_plot in ['ber', 'evm', 'ber_evm']:
+        for kind_of_plot in ['evm']:
             for polarization in ['_tot', '_x', '_y']:
                 key = kind_of_plot + polarization
                 if polarization == '_x':

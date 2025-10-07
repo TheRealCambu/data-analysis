@@ -1,14 +1,22 @@
 import os
+import re
 from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
 
+from commun_utils.theoretical_formulas import (
+    theoretical_ber_vs_snr,
+    theoretical_evm_vs_osnr,
+    theoretical_ber_from_evm,
+    osnr_to_snr
+)
 from commun_utils.utils import apply_plt_personal_settings, filter_outliers
 
 
 def plot_multiple_ber(
         kind_of_plot: str,
+        dpe_type: str,
         data_vectors: List[np.ndarray],
         filter_threshold: float,
         fec_threshold: float,
@@ -17,10 +25,11 @@ def plot_multiple_ber(
         x_values_data_list: List[np.ndarray],
         extra_title_label: str,
         legend_labels: List[str],
+        theory_value: np.ndarray,
         save_plot: bool,
         directory_to_save_images: str,
         base_string_for_saving_image: str,
-        alternative_plot: str,
+        alternative_plot: str
 ) -> None:
     label_dict = {
         "ber": {
@@ -37,25 +46,35 @@ def plot_multiple_ber(
         },
     }
     label_info = label_dict.get(kind_of_plot, label_dict["ber"])
+
     plt.figure()
     markers = ['o', 's', 'v', '^', 'd', 'x']
     colors = plt.cm.tab10(np.linspace(0, 1, len(data_vectors)))
-    temp = ""
+
     vector_lengths = []
-    for idx, (data_vector, x_idx, x_data, legend_label) in enumerate(zip(
-            data_vectors, x_values_sorted_indices_list, x_values_data_list, legend_labels
-    )):
+    if alternative_plot == 'max':
+        temp = 'Maximum filtered'
+        print(temp)
+    elif alternative_plot == 'min':
+        temp = 'Minimum filtered'
+    else:
+        temp = 'Average'
+
+    for idx, (data_vector, x_idx, x_data, legend_label) in enumerate(
+            zip(data_vectors, x_values_sorted_indices_list, x_values_data_list, legend_labels)
+    ):
         # Filter outliers
-        if ((filter_threshold < 5e-1 and "ber" in kind_of_plot) or
-            (filter_threshold < 1.5 and "ber" not in kind_of_plot)) and not alternative_plot:
-            filtered_data_tot = np.array(
-                filter_outliers(
-                    upper_threshold=filter_threshold,
-                    input_values=data_vector[x_idx]
-                )
+        # if ((filter_threshold < 5e-1 and "ber" in kind_of_plot) or
+        #     (filter_threshold < 1.5 and "ber" not in kind_of_plot)) and not alternative_plot:
+        filtered_data_tot = np.array(
+            filter_outliers(
+                upper_threshold=filter_threshold,
+                lower_threshold=1e-20,
+                input_values=data_vector[x_idx]
             )
-        else:
-            filtered_data_tot = np.array(data_vector[x_idx])
+        )
+        # else:
+        #     filtered_data_tot = np.array(data_vector[x_idx])
 
         # Each row corresponds to a single x value with multiple samples
         # We keep a row only if it has at least one non-NaN and nonzero value
@@ -64,8 +83,9 @@ def plot_multiple_ber(
         # Apply mask to both x and data
         x_data_valid = x_data[valid_mask]
         filtered_data_valid = filtered_data_tot[valid_mask, :]
+        filtered_theoretical_data = theory_value[valid_mask]
 
-        # Compute statistics
+        # Mean, min, max
         data_mean = np.nanmean(filtered_data_valid, axis=1)
         data_min = np.nanmin(filtered_data_valid, axis=1)
         data_max = np.nanmax(filtered_data_valid, axis=1)
@@ -79,46 +99,74 @@ def plot_multiple_ber(
                 mask = (data_max <= filter_threshold) & (data_max > 1e-32)
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_max = data_max[mask]
-                plt.semilogy(x_data_filtered, filtered_data_max, marker + '-', color=color, label=f"{legend_label}")
-                temp = 'Maximum filtered'
-                vector_lengths.append(x_data_filtered)
+                if filtered_data_max.shape[0] > 2:
+                    plt.semilogy(
+                        x_data_filtered, filtered_data_max, marker + '-',
+                        color=color, label=f"{legend_label}"
+                    )
+                    vector_lengths.append(x_data_filtered)
             elif alternative_plot == 'min':
                 mask = (data_min <= filter_threshold) & (data_min > 1e-32)
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_min = data_min[mask]
-                plt.semilogy(x_data_filtered, filtered_data_min, marker + '-', color=color, label=f"{legend_label}")
-                temp = 'Minimum filtered'
-                vector_lengths.append(x_data_filtered)
+                if filtered_data_min.shape[0] > 2:
+                    plt.semilogy(
+                        x_data_filtered, filtered_data_min, marker + '-',
+                        color=color, label=f"{legend_label}"
+                    )
+                    vector_lengths.append(x_data_filtered)
             else:
-                plt.semilogy(x_data_valid, data_mean, marker + '-', color=color, label=f"{legend_label}")
-                plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
-                temp = 'Average'
-                vector_lengths.append(x_data_valid)
+                if data_mean.shape[0] > 2:
+                    plt.semilogy(x_data_valid, data_mean, marker + '-', color=color, label=f"{legend_label}")
+                    plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
+                    vector_lengths.append(x_data_valid)
         else:
             if alternative_plot == 'max':
                 mask = (data_max <= filter_threshold) & (data_max > 1e-32)
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_max = data_max[mask]
-                plt.plot(x_data_filtered, filtered_data_max * 100, marker + '-', color=color, label=f"{legend_label}")
-                temp = 'Maximum filtered'
-                vector_lengths.append(x_data_filtered)
+                filtered_theoretical_data = theory_value[mask]
+                if filtered_data_max.shape[0] > 2:
+                    plt.plot(
+                        x_data_filtered, filtered_data_max * 100, marker + '-',
+                        color=color, label=f"{legend_label}"
+                    )
+                    vector_lengths.append(x_data_filtered)
             elif alternative_plot == 'min':
                 mask = (data_min <= filter_threshold) & (data_min > 1e-32)
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_min = data_min[mask]
-                plt.semilogy(x_data_filtered, filtered_data_min * 100, marker + '-', color=color,
-                             label=f"{legend_label}")
-                temp = 'Minimum filtered'
-                vector_lengths.append(x_data_filtered)
+                filtered_theoretical_data = theory_value[mask]
+                if filtered_data_min.shape[0] > 2:
+                    plt.plot(
+                        x_data_filtered, filtered_data_min * 100, marker + '-',
+                        color=color, label=f"{legend_label}"
+                    )
+                    vector_lengths.append(x_data_filtered)
             else:
-                plt.plot(x_data_valid, data_mean * 100, marker + '-', color=color, label=f"{legend_label}")
-                plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
-                temp = 'Average'
-                vector_lengths.append(x_data_valid)
+                if data_mean.shape[0] > 2:
+                    plt.plot(x_data_valid, data_mean * 100, marker + '-', color=color, label=f"{legend_label}")
+                    plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
+                    vector_lengths.append(x_data_valid)
+
+    if 'ber' in kind_of_plot:
+        plt.semilogy(
+            x_data_valid, filtered_theoretical_data, 'd-', color="darkgoldenrod",
+            label=f"Theoretical {kind_of_plot.upper()}"
+        )
+        plt.ylim(bottom=1e-5)
+    else:
+        plt.plot(
+            x_data_valid, filtered_theoretical_data * 100, 'd-',
+            color="darkgoldenrod", label=f"Theoretical {kind_of_plot.upper()}"
+        )
+        plt.ylim(bottom=20)
 
     temp_min = np.min([np.min(x) for x in vector_lengths if len(x) > 0])
     temp_max = np.max([np.max(x) for x in vector_lengths if len(x) > 0])
-    plt.xticks(np.arange(temp_min, temp_max + 1, 5))
+
+    plt.xticks(np.arange(temp_min, temp_max + 1, 1))
+    plt.xlim(left=10.0, right=16.3)
 
     # Reference lines
     if "ber" in kind_of_plot:
@@ -128,16 +176,15 @@ def plot_multiple_ber(
         )
 
     # Labels and title
-    plt.xlabel("ROP [dBm]")
+    plt.xlabel("OSNR [dB] per 0.1nm")
     plt.ylabel(label_info["ylabel"])
-    plt.title(f"{temp} {label_info['title']} vs ROP {extra_title_label}")
+    plt.title(f"{temp} {label_info['title']} vs OSNR per 0.1nm {extra_title_label}")
     plt.legend(loc="best")
     plt.grid(True, which="both")
     plt.tight_layout()
 
-    # Save (after show() or before, both fine)
     if save_plot:
-        image_name = filename.replace("PROCESSED_rop_sweep", "").replace(".npz", "")
+        image_name = filename.replace("PROCESSED_osnr_sweep", "").replace(".npz", "")
         if alternative_plot in ["min", "max"]:
             base_string_for_saving_image = f"{alternative_plot}_filtered_" + base_string_for_saving_image
         full_path = os.path.join(
@@ -149,95 +196,141 @@ def plot_multiple_ber(
 
     plt.show()
 
+# TODO: Make the theoretical values with infinite points
+# TODO: Compute the penalty
+# TODO: Separate the two timing recovery algorithms and put the two plots with and without the DPE
 
-# --- File setup ---
-root_folder = r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT"
+root_folder = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico\Tesi"
+               r"\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT")
+tr_algo_list = ["Gardner", "Frequency Domain"]
+baud_rate_and_mod_format_list = ["30GBd QPSK"]
+# baud_rate_and_mod_format_list = ["34.28GBd QPSK"]
+# baud_rate_and_mod_format_list = ["30GBd 16QAM"]
+# baud_rate_and_mod_format_list = ["34.28GBd 16QAM"]
+# baud_rate_and_mod_format_list = ["40GBd QPSK"]
 
-plot_type = 'rop'
+plot_type = 'osnr'
 folder_to_store_images = os.path.join(root_folder, "Final Plots", plot_type.upper())
 
-# Apply personal matplotlib settings
-apply_plt_personal_settings()
-
-# One .npz per algorithm and configuration
 files_dict = {
-    "30GBd QPSK": {
-        "Gardner": os.path.join(root_folder, "Gardner", "30GBd QPSK", "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz"),
-        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd QPSK",
-                                         "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz")
-    },
-    "30GBd 16QAM": {
-        "Gardner": os.path.join(root_folder, "Gardner", "30GBd 16QAM",
-                                "PROCESSED_rop_sweep_30GBd_DP_16QAM_w_dpe_v1.npz"),
-        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd 16QAM",
-                                         "PROCESSED_rop_sweep_30GBd_DP_16QAM_w_dpe_v1.npz")
-    },
-    "34.28GBd QPSK": {
-        "Gardner": os.path.join(root_folder, "Gardner", "34.28GBd QPSK",
-                                "PROCESSED_rop_sweep_34_28GBd_DP_QPSK_w_dpe_v1.npz"),
-        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd QPSK",
-                                         "PROCESSED_rop_sweep_34_28GBd_DP_QPSK_w_dpe_v1.npz")
-    },
-    "34.28GBd 16QAM": {
-        "Gardner": os.path.join(root_folder, "Gardner", "34.28GBd 16QAM",
-                                "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz"),
-        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd 16QAM",
-                                         "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz")
-    },
+    fmt: {} for fmt in baud_rate_and_mod_format_list
 }
 
-# --- Main plotting loop ---
-for baud_rate_and_mod_format, algo_files in files_dict.items():
-    gardner_file = algo_files["Gardner"]
-    freqdom_file = algo_files["Frequency Domain"]
+# Collect files
+for baud_rate_and_mod_format in baud_rate_and_mod_format_list:
+    for tr_algo in tr_algo_list:
+        folder_path = os.path.join(root_folder, tr_algo, baud_rate_and_mod_format)
+        files_in_current_folder = [f for f in os.listdir(folder_path) if f.endswith(".npz") and plot_type in f]
+        print(files_in_current_folder)
+        for npz_file in files_in_current_folder:
+            dpe_type = 'w_dpe' if 'w_dpe' in npz_file else 'wo_dpe'
 
-    print(f"\nGardner / {baud_rate_and_mod_format} vs. Frequency Domain / {baud_rate_and_mod_format}")
+            # Ensure nested key exists
+            if dpe_type not in files_dict[baud_rate_and_mod_format]:
+                files_dict[baud_rate_and_mod_format][dpe_type] = {}
 
-    with (
-        np.load(gardner_file, allow_pickle=True) as gardner_npz,
-        np.load(freqdom_file, allow_pickle=True) as freqdom_npz
-    ):
-        data_gardner = dict(gardner_npz)
-        data_freqdom = dict(freqdom_npz)
+            files_dict[baud_rate_and_mod_format][dpe_type][tr_algo] = os.path.join(folder_path, npz_file)
 
-        # Modulation info
-        is_qpsk = "QPSK" in baud_rate_and_mod_format
-        bits_per_symbol = 2 if is_qpsk else 4
-        const_cardinality = 4 if is_qpsk else 16
-        title_label_for_plot_tot = "(DP-QPSK" if is_qpsk else "(DP-16QAM"
+# Loop and plot
+for baud_rate_and_mod_format, dpe_dict in files_dict.items():
+    for dpe_type, algo_files in sorted(dpe_dict.items()):
+        gardner_file = algo_files.get("Gardner")
+        freqdom_file = algo_files.get("Frequency Domain")
 
-        # Sort ROP (x-values)
-        gardner_data = data_gardner[plot_type]
-        x_values_sorted_indices_gardner = np.argsort(gardner_data)
-        x_values_data_gardner = gardner_data[x_values_sorted_indices_gardner]
+        print(f"\nGardner / {baud_rate_and_mod_format} vs. Frequency Domain / {baud_rate_and_mod_format}")
+        print(f"Current file: {os.path.basename(gardner_file)}")
 
-        fd_data = data_freqdom[plot_type]
-        x_values_sorted_indices_fd = np.argsort(fd_data)
-        x_values_data_fd = fd_data[x_values_sorted_indices_fd]
+        with (
+            np.load(gardner_file, allow_pickle=True) as gardner_npz,
+            np.load(freqdom_file, allow_pickle=True) as freqdom_npz
+        ):
+            data_gardner = dict(gardner_npz)
+            data_freqdom = dict(freqdom_npz)
 
-        for kind_of_plot in ['ber', 'evm', 'ber_evm']:
-            # for kind_of_plot in ['ber']:
-            for polarization in ['_tot', '_x', '_y']:
-                key = kind_of_plot + polarization
-                if polarization == '_x':
-                    final_title_label = title_label_for_plot_tot + ', X Pol)'
-                elif polarization == '_y':
-                    final_title_label = title_label_for_plot_tot + ', Y Pol)'
+            # Determine modulation format
+            is_qpsk = "QPSK" in baud_rate_and_mod_format
+            bits_per_symbol = 2 if is_qpsk else 4
+            const_cardinality = 4 if is_qpsk else 16
+            title_label_for_plot_tot = "(DP-QPSK" if is_qpsk else "(DP-16QAM"
+
+            # Compute theoretical values (assuming you already defined these functions)
+            snr_lin = osnr_to_snr(
+                osnr_dB_vect=data_gardner[plot_type],
+                symbol_rate=np.unique(data_gardner['symbol_rate'])
+            )
+            ber_theory = theoretical_ber_vs_snr(
+                snr=snr_lin,
+                M=const_cardinality
+            )
+            evm_theory = theoretical_evm_vs_osnr(
+                bits_per_symbol=bits_per_symbol,
+                M=const_cardinality,
+                osnr=snr_lin,
+            )
+            ber_evm_theory = theoretical_ber_from_evm(
+                EVM_m=evm_theory,
+                M=const_cardinality
+            )
+
+            # Sort frequency offsets
+            gardner_data = data_gardner[plot_type]
+            x_values_sorted_indices_gardner = np.argsort(gardner_data)
+            x_values_data_gardner = gardner_data[x_values_sorted_indices_gardner]
+
+            fd_data = data_freqdom[plot_type]
+            x_values_sorted_indices_fd = np.argsort(fd_data)
+            x_values_data_fd = fd_data[x_values_sorted_indices_fd]
+
+            # Apply personal matplotlib settings
+            apply_plt_personal_settings()
+
+            # for kind_of_plot in ['ber', 'evm', 'ber_evm']:
+            for kind_of_plot in ['ber', 'evm']:
+                if kind_of_plot == 'ber':
+                    theory_value = ber_theory
+                elif kind_of_plot == 'evm':
+                    theory_value = evm_theory
                 else:
-                    final_title_label = title_label_for_plot_tot + ')'
-                plot_multiple_ber(
-                    kind_of_plot=kind_of_plot,
-                    data_vectors=[data_gardner[key], data_freqdom[key]],
-                    filter_threshold=6e-1 if 'ber' in kind_of_plot else 1.6,
-                    # filter_threshold=3e-2 if 'ber' in kind_of_plot else 0.2,
-                    fec_threshold=2e-2,
-                    filename=os.path.basename(gardner_file),
-                    x_values_sorted_indices_list=[x_values_sorted_indices_gardner, x_values_sorted_indices_fd],
-                    x_values_data_list=[x_values_data_gardner, x_values_data_fd],
-                    extra_title_label=final_title_label,
-                    legend_labels=["GardnerTimeRec", "FDTimeRec"],
-                    save_plot=True,
-                    directory_to_save_images=folder_to_store_images,
-                    base_string_for_saving_image=f"{key}_vs_rop",
-                    alternative_plot="min"
-                )
+                    theory_value = ber_evm_theory
+
+                for polarization in ['_tot', '_x', '_y']:
+                    key = kind_of_plot + polarization
+                    if polarization == '_x':
+                        temp = title_label_for_plot_tot + ', X Pol)'
+                    elif polarization == '_y':
+                        temp = title_label_for_plot_tot + ', Y Pol)'
+                    else:
+                        temp = title_label_for_plot_tot + ')'
+
+                    # Plot both algorithms
+                    plot_multiple_ber(
+                        kind_of_plot=kind_of_plot,
+                        dpe_type=dpe_type,
+                        data_vectors=[data_gardner[key], data_freqdom[key]],
+                        # filter_threshold=6e-1 if 'ber' in kind_of_plot else 1.6,
+                        # filter_threshold=3e-2 if 'ber' in kind_of_plot else 0.6,
+                        filter_threshold=4e-1 if 'ber' in kind_of_plot else 0.6,
+                        fec_threshold=2e-2,
+                        filename=os.path.basename(gardner_file),
+                        x_values_sorted_indices_list=[x_values_sorted_indices_gardner, x_values_sorted_indices_fd],
+                        x_values_data_list=[x_values_data_gardner, x_values_data_fd],
+                        extra_title_label=temp,
+                        legend_labels=["GardnerTimeRec", "FDTimeRec"],
+                        theory_value=theory_value,
+                        save_plot=False,
+                        directory_to_save_images=folder_to_store_images,
+                        base_string_for_saving_image=f"{key}_vs_osnr",
+                        alternative_plot=""
+                    )
+
+# tr_algo_list = ["Gardner", "Frequency Domain"]
+# baud_rate_and_mod_format_list = ["30GBd QPSK", "34.28GBd QPSK", "40GBd QPSK", "30GBd 16QAM", "34.28GBd 16QAM"]
+
+# tr_algo_list = ["Gardner"]
+# tr_algo_list = ["Frequency Domain"]
+# baud_rate_and_mod_format_list = ["30GBd QPSK"]
+# baud_rate_and_mod_format_list = ["34.28GBd QPSK"]
+# baud_rate_and_mod_format_list = ["30GBd 16QAM"]
+# baud_rate_and_mod_format_list = ["34.28GBd 16QAM"]
+
+# baud_rate_and_mod_format_list = ["40GBd QPSK"]

@@ -5,9 +5,10 @@ from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
-from common_utils.put_time_stamp_on_file import add_timestamp_to_filename
-from common_utils.theoretical_formulas import (
-    theoretical_ber_vs_snr, theoretical_evm_vs_osnr, theoretical_ber_vs_evm
+from commun_utils.theoretical_formulas import (
+    theoretical_ber_from_evm,
+    theoretical_evm_vs_osnr,
+    theoretical_ber_vs_snr
 )
 from scipy.interpolate import interp1d
 
@@ -145,7 +146,7 @@ if sweep_type == "osnr":
 
     # Theoretical curves
     berTheory_dict = {
-        "values": theoretical_ber_vs_snr(M=constellation_cardinality, snr_vect=snr_lin_dict["values"]),
+        "values": theoretical_ber_vs_snr(M=constellation_cardinality, snr=snr_lin_dict["values"]),
         "rate": snr_lin_dict["rate"]
     }
     EVMTheory = theoretical_evm_vs_osnr(
