@@ -5,12 +5,12 @@ from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
+from scipy.interpolate import interp1d
+
 from commun_utils.theoretical_formulas import (
-    theoretical_ber_from_evm,
     theoretical_evm_vs_osnr,
     theoretical_ber_vs_snr
 )
-from scipy.interpolate import interp1d
 
 
 def filter_outliers(threshold: float, input_values: List):

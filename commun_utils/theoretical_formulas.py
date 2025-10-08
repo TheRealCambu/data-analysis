@@ -54,9 +54,9 @@ def evm_one(osnr_value: float, k: float, M: int, bits_per_symbol: int) -> float:
 
 
 def theoretical_evm_vs_osnr(
+        osnr: Union[int, float, np.ndarray],
         bits_per_symbol: int,
         M: int,
-        osnr: Union[int, float, np.ndarray],
         input_type: str = "lin"
 ):
     # Get modulation-dependent normalization factor

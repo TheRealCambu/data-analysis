@@ -122,8 +122,8 @@ def plot_multiple_ber(
                     plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
                     vector_lengths.append(x_data_valid)
 
-    temp_min = np.min([np.min(x) for x in vector_lengths if len(x) > 0])
-    temp_max = np.max([np.max(x) for x in vector_lengths if len(x) > 0])
+    temp_min = np.nanmin([np.nanmin(x) for x in vector_lengths if len(x) > 0])
+    temp_max = np.nanmax([np.nanmax(x) for x in vector_lengths if len(x) > 0])
     plt.xticks(np.arange(temp_min, temp_max + 0.5, 0.5))
 
     # Reference lines
@@ -147,7 +147,7 @@ def plot_multiple_ber(
     plt.xlabel("Frequency Offset [GHz]")
     plt.ylabel(label_info["ylabel"])
     plt.title(
-        f"{'Maximum filtered' if plot_max else 'Average'} {label_info['title']}"
+        f"{'Maximum' if plot_max else 'Average'} {label_info['title']}"
         f" vs Frequency Offset {extra_title_label}"
     )
     plt.legend(loc="best")
@@ -158,7 +158,7 @@ def plot_multiple_ber(
     if save_plot:
         image_name = filename.replace("PROCESSED_fo_sweep", "").replace(".npz", "")
         if plot_max:
-            base_string_for_saving_image = ("max_filtered_" if plot_max else "") + base_string_for_saving_image
+            base_string_for_saving_image = ("max_" if plot_max else "") + base_string_for_saving_image
         full_path = os.path.join(
             directory_to_save_images,
             base_string_for_saving_image + image_name + ".png"
@@ -172,13 +172,10 @@ def plot_multiple_ber(
 root_folder = r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT"
 tr_algo_list = ["Gardner", "Frequency Domain"]
 # baud_rate_and_mod_format_list = ["30GBd QPSK"]
-# baud_rate_and_mod_format_list = ["34.28GBd QPSK"]
 baud_rate_and_mod_format_list = ["30GBd 16QAM"]
-# baud_rate_and_mod_format_list = ["34.28GBd 16QAM"]
-# baud_rate_and_mod_format_list = ["40GBd QPSK"]
 
-plot_type = 'fo'
-folder_to_store_images = os.path.join(root_folder, "Final Plots", plot_type.upper())
+sweep_type = 'fo'
+folder_to_store_images = os.path.join(root_folder, "Final Plots", sweep_type.upper())
 
 files_dict = {
     fmt: {} for fmt in baud_rate_and_mod_format_list
@@ -188,7 +185,7 @@ files_dict = {
 for baud_rate_and_mod_format in baud_rate_and_mod_format_list:
     for tr_algo in tr_algo_list:
         folder_path = os.path.join(root_folder, tr_algo, baud_rate_and_mod_format)
-        files_in_current_folder = [f for f in os.listdir(folder_path) if f.endswith(".npz") and plot_type in f]
+        files_in_current_folder = [f for f in os.listdir(folder_path) if f.endswith(".npz") and sweep_type in f]
         print(files_in_current_folder)
         for npz_file in files_in_current_folder:
             osnr_val = extract_osnr_from_filename(npz_file)
@@ -234,11 +231,11 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
             )
 
             # Sort frequency offsets
-            gardner_data = data_gardner[plot_type]
+            gardner_data = data_gardner[sweep_type]
             x_values_sorted_indices_gardner = np.argsort(gardner_data)
             x_values_data_gardner = gardner_data[x_values_sorted_indices_gardner]
 
-            fd_data = data_freqdom[plot_type]
+            fd_data = data_freqdom[sweep_type]
             x_values_sorted_indices_fd = np.argsort(fd_data)
             x_values_data_fd = fd_data[x_values_sorted_indices_fd]
 
@@ -246,7 +243,8 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
             apply_plt_personal_settings()
 
             # for kind_of_plot in ['ber', 'evm', 'ber_evm']:
-            for kind_of_plot in ['ber', 'evm']:
+            # for kind_of_plot in ['ber', 'evm']:
+            for kind_of_plot in ['evm', 'ber_evm']:
                 if kind_of_plot == 'ber':
                     theory_value = ber_theory
                 elif kind_of_plot == 'evm':
@@ -268,7 +266,8 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
                         kind_of_plot=kind_of_plot,
                         data_vectors=[data_gardner[key], data_freqdom[key]],
                         # filter_threshold=5e-1 if 'ber' in kind_of_plot else 1.6,
-                        filter_threshold=3e-2 if 'ber' in kind_of_plot else 0.25,
+                        # filter_threshold=2e-2 if 'ber' in kind_of_plot else 0.55,  # QPSK
+                        filter_threshold=2e-2 if 'ber' in kind_of_plot else 0.21,  # 16QAM
                         fec_threshold=2e-2,
                         filename=os.path.basename(gardner_file),
                         x_values_sorted_indices_list=[x_values_sorted_indices_gardner, x_values_sorted_indices_fd],
@@ -276,7 +275,7 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
                         extra_title_label=temp,
                         legend_labels=["GardnerTimeRec", "FDTimeRec"],
                         theory_value=theory_value,
-                        save_plot=False,
+                        save_plot=True,
                         directory_to_save_images=folder_to_store_images,
                         base_string_for_saving_image=f"{key}_vs_fo",
                         plot_max=True

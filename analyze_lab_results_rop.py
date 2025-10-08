@@ -3,9 +3,9 @@ from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import MultipleLocator
 
 from commun_utils.utils import apply_plt_personal_settings, filter_outliers
-from matplotlib.ticker import MultipleLocator
 
 
 def plot_multiple_ber(
@@ -49,17 +49,18 @@ def plot_multiple_ber(
     for idx, (data_vector, x_idx, x_data, legend_label) in enumerate(zip(
             data_vectors, x_values_sorted_indices_list, x_values_data_list, legend_labels
     )):
-        # Filter outliers
-        if ((filter_threshold < 5e-1 and "ber" in kind_of_plot) or
-            (filter_threshold < 1.5 and "ber" not in kind_of_plot)) and not alternative_plot:
-            filtered_data_tot = np.array(
-                filter_outliers(
-                    upper_threshold=filter_threshold,
-                    input_values=data_vector[x_idx]
-                )
+        # # Filter outliers
+        # if ((filter_threshold < 5e-1 and "ber" in kind_of_plot) or
+        #     (filter_threshold < 1.5 and "ber" not in kind_of_plot)) and not alternative_plot:
+        filtered_data_tot = np.array(
+            filter_outliers(
+                upper_threshold=filter_threshold,
+                lower_threshold=1e-30,
+                input_values=data_vector[x_idx]
             )
-        else:
-            filtered_data_tot = np.array(data_vector[x_idx])
+        )
+        # else:
+        #     filtered_data_tot = np.array(data_vector[x_idx])
 
         # Each row corresponds to a single x value with multiple samples
         # We keep a row only if it has at least one non-NaN and nonzero value
@@ -84,14 +85,14 @@ def plot_multiple_ber(
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_max = data_max[mask]
                 plt.semilogy(x_data_filtered, filtered_data_max, marker + '-', color=color, label=f"{legend_label}")
-                temp = 'Maximum filtered'
+                temp = 'Maximum'
                 vector_lengths.append(x_data_filtered)
             elif alternative_plot == 'min':
                 mask = (data_min <= filter_threshold) & (data_min > 1e-32)
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_min = data_min[mask]
                 plt.semilogy(x_data_filtered, filtered_data_min, marker + '-', color=color, label=f"{legend_label}")
-                temp = 'Minimum filtered'
+                temp = 'Minimum'
                 vector_lengths.append(x_data_filtered)
             else:
                 plt.semilogy(x_data_valid, data_mean, marker + '-', color=color, label=f"{legend_label}")
@@ -104,14 +105,16 @@ def plot_multiple_ber(
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_max = data_max[mask]
                 plt.plot(x_data_filtered, filtered_data_max * 100, marker + '-', color=color, label=f"{legend_label}")
-                temp = 'Maximum filtered'
+                temp = 'Maximum'
                 vector_lengths.append(x_data_filtered)
             elif alternative_plot == 'min':
                 mask = (data_min <= filter_threshold) & (data_min > 1e-32)
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_min = data_min[mask]
                 plt.plot(x_data_filtered, filtered_data_min * 100, marker + '-', color=color, label=f"{legend_label}")
-                temp = 'Minimum filtered'
+                plt.yticks(np.arange(np.min(filtered_data_min * 100) - 2, np.max(filtered_data_min * 100) + 2, 8))
+                # plt.yticks(np.arange(np.min(filtered_data_min * 100) - 2, np.max(filtered_data_min * 100) + 2, 2))
+                temp = 'Minimum'
                 vector_lengths.append(x_data_filtered)
             else:
                 plt.plot(x_data_valid, data_mean * 100, marker + '-', color=color, label=f"{legend_label}")
@@ -121,7 +124,13 @@ def plot_multiple_ber(
 
     temp_min = np.min([np.min(x) for x in vector_lengths if len(x) > 0])
     temp_max = np.max([np.max(x) for x in vector_lengths if len(x) > 0])
-    plt.xticks(np.arange(temp_min, temp_max + 1, 5))
+    if 'evm' not in kind_of_plot:
+        plt.xticks(np.arange(temp_min, temp_max, 4))
+        # plt.xticks(np.arange(temp_min - 0.6, temp_max + 0.6, 1))
+        # plt.xlim(right=-28.3)
+        # plt.ylim(bottom=9e-6)
+    else:
+        plt.xticks(np.arange(temp_min, temp_max, 4))
 
     # Reference lines
     if "ber" in kind_of_plot:
@@ -141,7 +150,7 @@ def plot_multiple_ber(
     if save_plot:
         image_name = filename.replace("PROCESSED_rop_sweep", "").replace(".npz", "")
         if alternative_plot in ["min", "max"]:
-            base_string_for_saving_image = f"{alternative_plot}_filtered_" + base_string_for_saving_image
+            base_string_for_saving_image = f"{alternative_plot}_" + base_string_for_saving_image
         full_path = os.path.join(
             directory_to_save_images,
             base_string_for_saving_image + image_name + ".png"
@@ -155,8 +164,8 @@ def plot_multiple_ber(
 # --- File setup ---
 root_folder = r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT"
 
-plot_type = 'rop'
-folder_to_store_images = os.path.join(root_folder, "Final Plots", plot_type.upper())
+sweep_type = 'rop'
+folder_to_store_images = os.path.join(root_folder, "Final Plots", sweep_type.upper())
 
 # Apply personal matplotlib settings
 apply_plt_personal_settings()
@@ -180,12 +189,12 @@ files_dict = {
     #     "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd QPSK",
     #                                      "PROCESSED_rop_sweep_34_28GBd_DP_QPSK_w_dpe_v1.npz")
     # },
-    "34.28GBd 16QAM": {
-        "Gardner": os.path.join(root_folder, "Gardner", "34.28GBd 16QAM",
-                                "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz"),
-        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd 16QAM",
-                                         "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz")
-    },
+    # "34.28GBd 16QAM": {
+    #     "Gardner": os.path.join(root_folder, "Gardner", "34.28GBd 16QAM",
+    #                             "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz"),
+    #     "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd 16QAM",
+    #                                      "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz")
+    # },
 }
 
 # --- Main plotting loop ---
@@ -209,16 +218,17 @@ for baud_rate_and_mod_format, algo_files in files_dict.items():
         title_label_for_plot_tot = "(DP-QPSK" if is_qpsk else "(DP-16QAM"
 
         # Sort ROP (x-values)
-        gardner_data = data_gardner[plot_type]
+        gardner_data = data_gardner[sweep_type]
         x_values_sorted_indices_gardner = np.argsort(gardner_data)
         x_values_data_gardner = gardner_data[x_values_sorted_indices_gardner]
 
-        fd_data = data_freqdom[plot_type]
+        fd_data = data_freqdom[sweep_type]
         x_values_sorted_indices_fd = np.argsort(fd_data)
         x_values_data_fd = fd_data[x_values_sorted_indices_fd]
 
         # for kind_of_plot in ['ber', 'evm', 'ber_evm']:
-        for kind_of_plot in ['evm']:
+        for kind_of_plot in ['ber', 'evm']:
+        # for kind_of_plot in ['ber']:
             for polarization in ['_tot', '_x', '_y']:
                 key = kind_of_plot + polarization
                 if polarization == '_x':
@@ -231,7 +241,8 @@ for baud_rate_and_mod_format, algo_files in files_dict.items():
                     kind_of_plot=kind_of_plot,
                     data_vectors=[data_gardner[key], data_freqdom[key]],
                     filter_threshold=6e-1 if 'ber' in kind_of_plot else 1.6,
-                    # filter_threshold=3e-2 if 'ber' in kind_of_plot else 0.2,
+                    # filter_threshold=2e-2 if 'ber' in kind_of_plot else 0.21,  # 16QAM
+                    # filter_threshold=2e-2 if 'ber' in kind_of_plot else 0.55,  # QPSK
                     fec_threshold=2e-2,
                     filename=os.path.basename(gardner_file),
                     x_values_sorted_indices_list=[x_values_sorted_indices_gardner, x_values_sorted_indices_fd],
