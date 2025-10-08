@@ -162,8 +162,9 @@ def plot_multiple_ber(
 
 
 # --- File setup ---
-root_folder = r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT"
-
+# root_folder = r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT"
+root_folder = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico"
+               r"\Tesi\Data-analysis\Lab results\v3 - Processed Datasets -- First OPT")
 sweep_type = 'rop'
 folder_to_store_images = os.path.join(root_folder, "Final Plots", sweep_type.upper())
 
@@ -172,17 +173,17 @@ apply_plt_personal_settings()
 
 # One .npz per algorithm and configuration
 files_dict = {
-    # "30GBd QPSK": {
-    #     "Gardner": os.path.join(root_folder, "Gardner", "30GBd QPSK", "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz"),
-    #     "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd QPSK",
-    #                                      "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz")
-    # },
-    "30GBd 16QAM": {
-        "Gardner": os.path.join(root_folder, "Gardner", "30GBd 16QAM",
-                                "PROCESSED_rop_sweep_30GBd_DP_16QAM_w_dpe_v1.npz"),
-        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd 16QAM",
-                                         "PROCESSED_rop_sweep_30GBd_DP_16QAM_w_dpe_v1.npz")
+    "30GBd QPSK": {
+        "Gardner": os.path.join(root_folder, "Gardner", "30GBd QPSK", "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz"),
+        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd QPSK",
+                                         "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz")
     },
+    # "30GBd 16QAM": {
+    #     "Gardner": os.path.join(root_folder, "Gardner", "30GBd 16QAM",
+    #                             "PROCESSED_rop_sweep_30GBd_DP_16QAM_w_dpe_v1.npz"),
+    #     "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd 16QAM",
+    #                                      "PROCESSED_rop_sweep_30GBd_DP_16QAM_w_dpe_v1.npz")
+    # },
     # "34.28GBd QPSK": {
     #     "Gardner": os.path.join(root_folder, "Gardner", "34.28GBd QPSK",
     #                             "PROCESSED_rop_sweep_34_28GBd_DP_QPSK_w_dpe_v1.npz"),
@@ -226,8 +227,8 @@ for baud_rate_and_mod_format, algo_files in files_dict.items():
         x_values_sorted_indices_fd = np.argsort(fd_data)
         x_values_data_fd = fd_data[x_values_sorted_indices_fd]
 
-        # for kind_of_plot in ['ber', 'evm', 'ber_evm']:
-        for kind_of_plot in ['ber', 'evm']:
+        for kind_of_plot in ['ber', 'evm', 'ber_evm']:
+        # for kind_of_plot in ['ber', 'evm']:
         # for kind_of_plot in ['ber']:
             for polarization in ['_tot', '_x', '_y']:
                 key = kind_of_plot + polarization
@@ -252,5 +253,5 @@ for baud_rate_and_mod_format, algo_files in files_dict.items():
                     save_plot=True,
                     directory_to_save_images=folder_to_store_images,
                     base_string_for_saving_image=f"{key}_vs_rop",
-                    alternative_plot="min"
+                    alternative_plot=""
                 )

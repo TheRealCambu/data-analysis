@@ -93,11 +93,7 @@ def plot_multiple_ber(
         # if ((filter_threshold < 5e-1 and "ber" in kind_of_plot) or
         #     (filter_threshold < 1.5 and "ber" not in kind_of_plot)) and not alternative_plot:
         filtered_data_tot = np.array(
-            filter_outliers(
-                upper_threshold=filter_threshold,
-                lower_threshold=1e-31,
-                input_values=data_vector[x_idx]
-            )
+            filter_outliers(upper_threshold=filter_threshold, input_values=data_vector[x_idx])
         )
         # else:
         #     filtered_data_tot = np.array(data_vector[x_idx])
@@ -220,11 +216,13 @@ def plot_multiple_ber(
                     plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
                     vector_lengths.append(x_data_valid)
 
+    ################## QPSK #######################
     temp_min = np.min([np.min(x) for x in vector_lengths if len(x) > 0])
     temp_max = np.max([np.max(x) for x in vector_lengths if len(x) > 0])
     plt.xticks(np.arange(temp_min - 1, temp_max + 1, 1))
-    plt.xlim(left=16.0, right=25.1)
-    # plt.xlim(left=15.7, right=23.7)
+    # plt.xlim(left=9.5, right=17.5)  # 30 GBd
+    # plt.xlim(left=9.5, right=18.5)  # 34.28 GBd
+    plt.xlim(left=10.5, right=20.1)  # 40 GBd
 
     if 'ber' in kind_of_plot:
         plt.semilogy(
@@ -233,18 +231,46 @@ def plot_multiple_ber(
         )
         if 'evm' in kind_of_plot:
             plt.xticks(np.arange(temp_min - 3, temp_max + 3, 3))
-            plt.xlim(left=16.0, right=38.3)
-            plt.ylim(top=8e-2, bottom=1e-5)
-            # plt.ylim(top=8e-2, bottom=2e-6)
+            plt.xlim(left=10.5, right=39)
+            # plt.ylim(top=8e-2, bottom=1e-21)  # 30 GBd
+            # plt.ylim(top=8e-2, bottom=1e-18)  # 34.28 GBd
+            plt.ylim(top=8e-2, bottom=1e-15)  # 40 GBd
         else:
-            plt.ylim(top=8e-2, bottom=2e-3)
+            plt.ylim(top=8e-2, bottom=6e-5)
             # plt.ylim(top=8e-2, bottom=2e-3)
     else:
         plt.plot(
             x_values_dense, theory_value * 100, '-.',
             linewidth=2.0, color="darkred", label=f"Theoretical {label_info['title']}"
         )
-        plt.ylim(top=26, bottom=4)
+        plt.ylim(top=60, bottom=15)
+
+    # ################### 16QAM #######################
+    # temp_min = np.min([np.min(x) for x in vector_lengths if len(x) > 0])
+    # temp_max = np.max([np.max(x) for x in vector_lengths if len(x) > 0])
+    # plt.xticks(np.arange(temp_min - 1, temp_max + 1, 1))
+    # plt.xlim(left=16.0, right=25.2)
+    # # plt.xlim(left=15.7, right=23.7)
+    #
+    # if 'ber' in kind_of_plot:
+    #     plt.semilogy(
+    #         x_values_dense, theory_value, '-.', color="darkred",
+    #         linewidth=2.0, label=f"Theoretical {label_info['title']}"
+    #     )
+    #     if 'evm' in kind_of_plot:
+    #         plt.xticks(np.arange(temp_min - 3, temp_max + 3, 3))
+    #         plt.xlim(left=16.0, right=38.3)
+    #         plt.ylim(top=8e-2, bottom=1e-5)
+    #         # plt.ylim(top=8e-2, bottom=2e-6)
+    #     else:
+    #         plt.ylim(top=8e-2, bottom=2e-3)
+    #         # plt.ylim(top=8e-2, bottom=2e-3)
+    # else:
+    #     plt.plot(
+    #         x_values_dense, theory_value * 100, '-.',
+    #         linewidth=2.0, color="darkred", label=f"Theoretical {label_info['title']}"
+    #     )
+    #     plt.ylim(top=26, bottom=4)
 
     # Reference lines
     if kind_of_plot not in ["evm", "ber_evm"]:
@@ -262,7 +288,7 @@ def plot_multiple_ber(
     plt.tight_layout()
 
     if save_plot:
-        image_name = filename.replace("PROCESSED_osnr_sweep", "").replace(".npz", "")
+        image_name = filename.replace("PROCESSED_osnr_sweep", "").replace(".npz", "").replace("_wo_dpe_v1", "")
         if alternative_plot in ["min", "max"]:
             base_string_for_saving_image = f"{alternative_plot}_" + base_string_for_saving_image
         full_path = os.path.join(
@@ -280,13 +306,14 @@ def plot_multiple_ber(
 
 root_folder = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico"
                r"\Tesi\Data-analysis\Lab results\v3 - Processed Datasets -- First OPT")
+
 # tr_algo_list = ["Gardner", "Frequency Domain"]
 # baud_rate_and_mod_format_list = ["30GBd QPSK", "34.28GBd QPSK", "40GBd QPSK", "30GBd 16QAM", "34.28GBd 16QAM"]
 tr_algo_list = ["Gardner"]
 # tr_algo_list = ["Frequency Domain"]
-baud_rate_and_mod_format_list = ["30GBd QPSK"]
+# baud_rate_and_mod_format_list = ["30GBd QPSK"]
 # baud_rate_and_mod_format_list = ["34.28GBd QPSK"]
-# baud_rate_and_mod_format_list = ["40GBd QPSK"]
+baud_rate_and_mod_format_list = ["40GBd QPSK"]
 # baud_rate_and_mod_format_list = ["30GBd 16QAM"]
 # baud_rate_and_mod_format_list = ["34.28GBd 16QAM"]
 
@@ -377,7 +404,7 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
             # Apply plotting settings
             apply_plt_personal_settings()
 
-            # for kind_of_plot in ["ber_evm"]:
+            # for kind_of_plot in ["ber"]:
             for kind_of_plot in ["ber", "evm", "ber_evm"]:
                 theory_value = {
                     "ber": ber_theory,
@@ -399,8 +426,8 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
                         kind_of_plot=kind_of_plot,
                         algo_type=algo_type,
                         data_vectors=[data_off[key], data_on[key]],
-                        filter_threshold=6e-1 if "ber" in kind_of_plot else 1.6,
-                        # filter_threshold=4e-1 if "ber" in kind_of_plot else 0.7,
+                        # filter_threshold=6e-1 if "ber" in kind_of_plot else 1.6,
+                        filter_threshold=4e-1 if "ber" in kind_of_plot else 0.7,
                         fec_threshold=2e-2,
                         filename=os.path.basename(wo_dpe_file),
                         x_values_sorted_indices_list=[x_idx_off, x_idx_on],
@@ -412,7 +439,7 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
                         save_plot=True,
                         directory_to_save_images=folder_to_store_images,
                         base_string_for_saving_image=f"{key}_vs_osnr",
-                        alternative_plot="min"
+                        alternative_plot=""
                     )
 
 # Filter outliers
