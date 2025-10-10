@@ -5,11 +5,17 @@ import pandas as pd
 from commun_utils.utils import apply_plt_personal_settings
 from commun_utils.theoretical_formulas import theoretical_evm_from_ber
 
+# Add the godard to the plots
+
 # === Load CSV ===
-csv_path = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano"
-            r"\Politecnico\Tesi\Data-analysis\Simulation Sweeps\CR Sweeps"
-            r"\Second Batch (much more data, used the lab pc)\gardner_and_fd_cr_simulation_results.csv")
-df = pd.read_csv(csv_path)
+csv_path_gardner_fd = (
+    r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano"
+    r"\Politecnico\Tesi\Data-analysis\Simulation Sweeps\CR Sweeps"
+    r"\Second Batch (much more data, used the lab pc)\gardner_and_fd_cr_simulation_results.csv"
+)
+df = pd.read_csv(csv_path_gardner_fd)
+
+# 
 
 # Get the symbol rate since it is unique
 symbol_rate = df.symbol_rate[0]
@@ -42,6 +48,7 @@ cr_algo = {
     "fd": "FDTimeRec"
 }
 
+plot_fec_th_line = False
 ber_fec_threshold = 2e-2
 evm_fec_threshold = {
     2: theoretical_evm_from_ber(ber_fec_threshold, 4),
@@ -49,7 +56,7 @@ evm_fec_threshold = {
 }
 
 markers = ['o', 's', 'v', '^', 'd', 'x']
-colors = plt.cm.tab10(np.linspace(0, 1, 2))
+colors = plt.cm.tab10(np.linspace(0, 1, len(cr_algo)))
 
 # Group by modulation order and clock recovery algorithm
 groups = df.groupby(['mod_order', 'clock_recovery_algo'])
@@ -60,8 +67,7 @@ apply_plt_personal_settings()
 for modulation_label, bits_per_symbol in mod_order.items():
     for sweep_key, sweep_info in sweep_columns_dict.items():
         xlabel = sweep_info['xlabel']
-        start_idx = sweep_info["idx"][0]
-        stop_idx = sweep_info["idx"][1]
+        start_idx, stop_idx = sweep_info["idx"]
 
         for y_value_key, plot_dict in y_values_columns.items():
             plt.figure()
@@ -74,25 +80,22 @@ for modulation_label, bits_per_symbol in mod_order.items():
 
                 current_df = groups.get_group((bits_per_symbol, cr_algo_label)).copy().reset_index(drop=True)
                 df_slice = current_df.iloc[start_idx:stop_idx]
-                all_keys_but_current = [key for key in sweep_columns_dict_keys if key != sweep_key]
+
+                all_keys_but_current = [k for k in sweep_columns_dict_keys if k != sweep_key]
                 substring_for_title = ", ".join(
-                    f"{sweep_columns_dict[key]['xlabel']}: {np.unique(df_slice[key])[0]}"
-                    for key in all_keys_but_current
+                    f"{sweep_columns_dict[k]['xlabel']}: {np.unique(df_slice[k])[0]}"
+                    for k in all_keys_but_current
                 )
-                # Filter only rows where sweep column is not NaN
+
                 x_values = df_slice[sweep_key]
-                # plt.xticks(np.arange(np.min(x_values), np.max(x_values) + 1, 0.5))
                 plt.xlim(left=np.min(x_values) * 0.94, right=np.max(x_values) * 1.02)
-                # Convert string arrays to numeric and take mean per row
-                y_mean = df_slice[y_value_key].apply(
-                    lambda s: np.mean([float(x) for x in s.replace('[', '').replace(']', '').split()])
-                )
-                y_min = df_slice[y_value_key].apply(
-                    lambda s: np.min([float(x) for x in s.replace('[', '').replace(']', '').split()])
-                )
-                y_max = df_slice[y_value_key].apply(
-                    lambda s: np.max([float(x) for x in s.replace('[', '').replace(']', '').split()])
-                )
+
+                # Convert string arrays to numeric and take mean, min, and max per row
+                y_array = df_slice[y_value_key].apply(lambda s: np.fromstring(s.strip('[]'), sep=' '))
+                y_mean = y_array.apply(np.mean)
+                y_min = y_array.apply(np.min)
+                y_max = y_array.apply(np.max)
+
                 if 'ber' in y_value_key:
                     mask = (y_max <= ber_fec_threshold)
                     x_values_filtered = x_values[mask]
@@ -121,16 +124,18 @@ for modulation_label, bits_per_symbol in mod_order.items():
                         x_values_filtered, y_min_filtered,
                         y_max_filtered, alpha=0.3, color=color
                     )
-            if 'ber' in y_value_key:
-                plt.axhline(
-                    ber_fec_threshold, color='darkred', linestyle=':', linewidth=2.5,
-                    label=f"FEC threshold = {ber_fec_threshold:.0e}"
-                )
-            else:
-                plt.axhline(
-                    evm_fec_threshold[bits_per_symbol] * 100, color='darkred', linestyle=':', linewidth=2.5,
-                    label=f"FEC threshold = {evm_fec_threshold[bits_per_symbol] * 100:.2f} %"
-                )
+
+            if plot_fec_th_line:
+                if 'ber' in y_value_key:
+                    plt.axhline(
+                        ber_fec_threshold, color='darkred', linestyle=':', linewidth=2.5,
+                        label=f"FEC threshold = {ber_fec_threshold:.0e}"
+                    )
+                else:
+                    plt.axhline(
+                        evm_fec_threshold[bits_per_symbol] * 100, color='darkred', linestyle=':', linewidth=2.5,
+                        label=f"FEC threshold = {evm_fec_threshold[bits_per_symbol] * 100:.2f} %"
+                    )
             plt.xlabel(xlabel)
             plt.ylabel(plot_dict['ylabel'])
             plt.title(f"{plot_dict['title']} vs {xlabel} ({modulation_label})\n{substring_for_title}")
@@ -138,47 +143,6 @@ for modulation_label, bits_per_symbol in mod_order.items():
             plt.legend(loc='best')
             plt.tight_layout()
             plt.show()
-
-# for modulation_order_label, bits_per_symbol in mod_order.items():
-#     for cr_algo_label, label_for_plot in cr_algo.items():
-#         current_df = groups.get_group((bits_per_symbol, cr_algo_label)).copy()
-#         current_df = current_df.reset_index(drop=True)
-#         for current_sweep_key, idx_and_label_dict in sweep_columns_dict.items():
-#             start_idx = idx_and_label_dict["idx"][0]
-#             stop_idx = idx_and_label_dict["idx"][1]
-#             xlabel = idx_and_label_dict["xlabel"]
-#             df_slice = current_df.iloc[start_idx:stop_idx]
-#             x_values = df_slice[current_sweep_key]
-#             all_keys_but_current = [key for key in sweep_columns_dict_keys if key != current_sweep_key]
-#             substring_for_title = ", ".join(
-#                 f"{sweep_columns_dict[key]['xlabel']}: {np.unique(df_slice[key])[0]}"
-#                 for key in all_keys_but_current
-#             )
-#             for y_value_key, plot_dict in y_values_columns.items():
-#                 plt.figure()
-#                 y_mean = df_slice[y_value_key].apply(
-#                     lambda s: np.mean([float(x) for x in s.replace('[', '').replace(']', '').split()])
-#                 )
-#                 y_min = df_slice[y_value_key].apply(
-#                     lambda s: np.min([float(x) for x in s.replace('[', '').replace(']', '').split()])
-#                 )
-#                 y_max = df_slice[y_value_key].apply(
-#                     lambda s: np.max([float(x) for x in s.replace('[', '').replace(']', '').split()])
-#                 )
-#                 if 'ber' in y_value_key:
-#                     plt.semilogy(x_values, y_mean)
-#                     plt.fill_between(x_values, y_min, y_max, alpha=0.2)
-#                 else:
-#                     plt.plot(x_values, y_mean * 100)
-#                     plt.fill_between(x_values, y_min * 100, y_max * 100, alpha=0.2)
-#                 plt.xlabel(xlabel)
-#                 plt.ylabel(plot_dict["ylabel"])
-#                 plt.title(f"{plot_dict['title']} vs. {sweep_columns_dict[current_sweep_key]['xlabel']}"
-#                           f"\n{substring_for_title}")
-#                 plt.grid(True, which="both")
-#                 plt.tight_layout()
-#                 plt.show()
-
 
 # y_values_columns = {
 #     "berTot": {"title": "BER", "ylabel": "BER"},
