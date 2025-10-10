@@ -1,7 +1,7 @@
 from typing import Union
 
 import numpy as np
-from scipy.special import erfc
+from scipy.special import erfc, erfcinv
 
 
 def theoretical_ber_vs_snr(snr: np.ndarray, M: int) -> np.ndarray:
@@ -97,3 +97,24 @@ def theoretical_ber_from_evm(
     prefactor = (1.0 - 1.0 / L) / log2L
     ber = prefactor * erfc(z)
     return ber
+
+
+def theoretical_evm_from_ber(
+        ber: Union[float, np.ndarray],
+        M: int
+):
+    L = np.sqrt(M)
+    # Get modulation-dependent normalization factor
+    k = get_k(bits_per_symbol=int(np.sqrt(M)))
+    # Convert to numpy array
+    ber = np.asarray(ber, dtype=np.float64)
+
+    log2L = np.log2(L)
+    log2M = np.log2(M)
+
+    # Compute the erfc argument
+    erfcinv_arg = ber * log2L / (1 - 1 / L)
+    sqrt_term = np.sqrt(3 * log2L / (log2M * (L ** 2 - 1)))
+    EVM_m = (sqrt_term / k) / erfcinv(erfcinv_arg)
+
+    return EVM_m

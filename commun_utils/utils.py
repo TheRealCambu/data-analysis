@@ -6,7 +6,7 @@ import numpy as np
 
 def apply_plt_personal_settings():
     # Axes labels and title
-    plt.rc('axes', labelsize=16, titlesize=17, grid=True)
+    plt.rc('axes', labelsize=17, titlesize=17, grid=True)
 
     # Ticks
     plt.rc('xtick', labelsize=13, direction='in', top=True)
@@ -16,7 +16,7 @@ def apply_plt_personal_settings():
     plt.rc('legend', fontsize=14)
 
     # Grid style
-    plt.rc('grid', linestyle='--', linewidth=0.3, color='gray')
+    plt.rc('grid', linestyle='--', linewidth=0.4, color='gray')
 
     # Figure size
     plt.rc('figure', figsize=(10, 6.5))
