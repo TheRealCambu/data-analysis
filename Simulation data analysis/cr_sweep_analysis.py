@@ -6,8 +6,58 @@ import os
 from commun_utils.utils import apply_plt_personal_settings
 from commun_utils.theoretical_formulas import theoretical_evm_from_ber
 
+
+def merge_lists(series):
+    combined = []
+    for s in series:
+        if s is None or (isinstance(s, float) and np.isnan(s)):
+            continue
+        if isinstance(s, str):
+            s = s.strip()
+            if s in ("[]", ""):
+                continue
+            s = [float(x) for x in s.replace('[', '').replace(']', '').split()]
+        elif isinstance(s, (list, np.ndarray)):
+            s = list(s)
+        else:
+            continue
+        combined.extend(s)
+    return combined
+
+
+def get_df_slice(current_sweep, groups, sweep_columns_dict_keys, bits_per_symbol, cr_algo_label):
+    # Get the group using bits per symbol and the clock recovery algorithm
+    current_df = groups.get_group((bits_per_symbol, cr_algo_label)).copy().reset_index(drop=True)
+
+    target_cols = [k for k in sweep_columns_dict_keys if k != current_sweep]
+    same_value_rows = current_df[current_df.duplicated(subset=target_cols, keep=False)].copy()
+    rows_to_join_mask = same_value_rows.duplicated(subset=sweep_columns_dict_keys, keep=False)
+    rows_to_join = same_value_rows[rows_to_join_mask].copy()
+    rows_to_keep = same_value_rows[~rows_to_join_mask].copy()
+
+    # Detect merge columns automatically
+    merge_cols = [col for col in rows_to_join.columns if 'EVM' in col or 'ber' in col]
+
+    # The rest are considered grouping (unique identifier) columns
+    group_cols = [col for col in rows_to_join.columns if col not in merge_cols]
+
+    # Group by the unique columns and merge the numeric list columns
+    merged_df = rows_to_join.groupby(group_cols, as_index=False).agg({col: merge_lists for col in merge_cols})
+
+    # Concatenate the merged rows with the rows to keep
+    final_df = pd.concat([merged_df, rows_to_keep], ignore_index=True)
+
+    return final_df
+
+
 csvs_folder = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico"
                r"\Tesi\Data-analysis\Simulation Sweeps\CR Sweeps\Second Batch (much more data, used the lab pc)")
+
+# === Define output path ===
+save_dir = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano"
+            r"\Politecnico\Tesi\Data-analysis\Simulation Sweeps\CR Sweeps\Final Plots")
+
+os.makedirs(save_dir, exist_ok=True)
 
 # === Load CSV ===
 csv_path_gardner_fd = os.path.join(csvs_folder, "gardner_and_fd_cr_simulation_results.csv")
@@ -18,16 +68,13 @@ df_godard = pd.read_csv(csv_path_godard)
 
 # Add the sps column in the gardner and fd
 insert_loc_for_sps_column = df_gardner_fd.columns.get_loc("clock_recovery_algo") + 1
-df_gardner_fd.insert(insert_loc_for_sps_column, "sps_cr", len(df_gardner_fd) * [2])
+df_gardner_fd.insert(insert_loc_for_sps_column, "sps_cr", [2.0] * len(df_gardner_fd))
 
 # Add the clock recovery algorithm in the godard
 insert_loc_for_clock_recovery_algo_column = df_godard.columns.get_loc("samp_delay") + 1
-df_godard.insert(insert_loc_for_clock_recovery_algo_column, "clock_recovery_algo", len(df_godard) * ["godard"])
+df_godard.insert(insert_loc_for_clock_recovery_algo_column, "clock_recovery_algo", ["godard"] * len(df_godard))
 
 df = pd.merge(df_gardner_fd, df_godard, how="outer")
-
-# Get the symbol rate since it is unique
-symbol_rate = df.symbol_rate[0]
 
 # Drop the symbol rate columns since it is unique
 df.drop(['symbol_rate', 'repeat'], axis=1, inplace=True)
@@ -74,126 +121,99 @@ groups = df.groupby(['mod_order', 'clock_recovery_algo'])
 # Apply personal matplotlib settings
 apply_plt_personal_settings()
 
-# 1. Get the group using bits per symbol and the clock recovery algorithm
-current_df = groups.get_group((2, "gardner")).copy().reset_index(drop=True)
+for modulation_label, bits_per_symbol in mod_order.items():
+    for sweep_key, sweep_info in sweep_columns_dict.items():
+        xlabel = sweep_info['xlabel']
+        start_idx, stop_idx = sweep_info["idx"]
 
-# 2. Get a sub dataframe of this group by using the target columns
-current_sweep = "rolloff"
+        for y_value_key, plot_dict in y_values_columns.items():
+            plt.figure()
+            for idx, (cr_algo_label, cr_label_for_plot) in enumerate(cr_algo.items()):
+                # print(f"Bits per symbol: {bits_per_symbol} -- Algorithm: {cr_algo_label}")
 
-target_cols = [k for k in sweep_columns_dict_keys if k != current_sweep]
-same_value_rows = current_df[current_df.duplicated(subset=target_cols, keep=False)].copy()
-rows_to_join_mask = current_df.duplicated(subset=sweep_columns_dict_keys, keep=False)
-rows_to_join = same_value_rows[rows_to_join_mask].copy()
-rows_to_keep = same_value_rows[~rows_to_join_mask].copy()
+                # Plot each dataset
+                marker = markers[idx % len(markers)]
+                color = colors[idx]
 
-# Detect merge columns automatically
-merge_cols = [col for col in rows_to_join.columns if 'EVM' in col or 'ber' in col]
+                df_slice = get_df_slice(
+                    current_sweep=sweep_key,
+                    groups=groups,
+                    sweep_columns_dict_keys=sweep_columns_dict_keys,
+                    bits_per_symbol=bits_per_symbol,
+                    cr_algo_label=cr_algo_label
+                )
 
-# The rest are considered grouping (unique identifier) columns
-group_cols = [col for col in rows_to_join.columns if col not in merge_cols]
+                all_keys_but_current = [k for k in sweep_columns_dict_keys if k != sweep_key]
+                substring_for_title = ", ".join(
+                    f"{sweep_columns_dict[k]['xlabel']}: {np.unique(df_slice[k])[0]}"
+                    for k in all_keys_but_current
+                )
 
-def merge_lists(series):
-    """Convert string representations of arrays to numeric lists and flatten"""
-    combined = []
-    for s in series:
-        if isinstance(s, str):
-            s = [float(x) for x in s.replace('[','').replace(']','').split()]
-        elif isinstance(s, (list, np.ndarray)):
-            s = list(s)
-        combined.extend(s)
-    return combined
+                x_values = df_slice[sweep_key]
+                plt.xlim(left=np.min(x_values) * 0.94, right=np.max(x_values) * 1.02)
 
-# Group by the unique columns and merge the numeric list columns
-merged_df = rows_to_join.groupby(group_cols, as_index=False).agg({col: merge_lists for col in merge_cols})
+                # Convert string arrays to numeric and take mean, min, and max per row
+                y_array = df_slice[y_value_key].apply(
+                    lambda s: np.array(s if isinstance(s, (list, np.ndarray))
+                                       else np.fromstring(s.strip('[]'), sep=' '))
+                )
+                y_mean = y_array.apply(np.mean)
+                y_min = y_array.apply(np.min)
+                y_max = y_array.apply(np.max)
 
-# Concatenate the merged rows with the rows to keep
-final_df = pd.concat([merged_df, rows_to_keep], ignore_index=True)
+                is_ber = 'ber' in y_value_key.lower()
+                threshold = ber_fec_threshold if is_ber else evm_fec_threshold[bits_per_symbol]
+                # threshold = 0.6 if is_ber else 150 / 100
+                scale = 1 if is_ber else 100  # EVM in %, BER stays linear
 
-# Optional: sort the dataframe by group columns if needed
-final_df = final_df.sort_values(by=group_cols + [current_sweep]).reset_index(drop=True)
+                mask = (y_max <= threshold)
 
-print(final_df.to_string())
+                # Apply mask consistently to all arrays to avoid misalignment warnings
+                x_filtered = x_values[mask]
+                y_mean_filtered = y_mean[mask] * scale
+                y_min_filtered = y_min[mask] * scale
+                y_max_filtered = y_max[mask] * scale
 
+                # Plot
+                plt.plot(
+                    x_filtered, y_mean_filtered, marker + '-', color=color,
+                    label=cr_label_for_plot + f" (@ {np.unique(df_slice['sps_cr'])[0]:.2f} SpS)"
+                )
+                plt.fill_between(
+                    x_filtered, y_min_filtered, y_max_filtered, alpha=0.3, color=color
+                )
 
-# for modulation_label, bits_per_symbol in mod_order.items():
-#     for sweep_key, sweep_info in sweep_columns_dict.items():
-#         xlabel = sweep_info['xlabel']
-#         start_idx, stop_idx = sweep_info["idx"]
-#
-#         for y_value_key, plot_dict in y_values_columns.items():
-#             plt.figure()
-#             for idx, (cr_algo_label, cr_label_for_plot) in enumerate(cr_algo.items()):
-#                 print(f"Bits per symbol: {bits_per_symbol} -- Algorithm: {cr_algo_label}")
-#
-#                 # Plot each dataset
-#                 marker = markers[idx % len(markers)]
-#                 color = colors[idx]
-#
-#                 current_df = groups.get_group((bits_per_symbol, cr_algo_label)).copy().reset_index(drop=True)
-#                 df_slice = current_df.iloc[start_idx:stop_idx]
-#
-#                 all_keys_but_current = [k for k in sweep_columns_dict_keys if k != sweep_key]
-#                 substring_for_title = ", ".join(
-#                     f"{sweep_columns_dict[k]['xlabel']}: {np.unique(df_slice[k])[0]}"
-#                     for k in all_keys_but_current
-#                 )
-#
-#                 x_values = df_slice[sweep_key]
-#                 plt.xlim(left=np.min(x_values) * 0.94, right=np.max(x_values) * 1.02)
-#
-#                 # Convert string arrays to numeric and take mean, min, and max per row
-#                 y_array = df_slice[y_value_key].apply(lambda s: np.fromstring(s.strip('[]'), sep=' '))
-#                 y_mean = y_array.apply(np.mean)
-#                 y_min = y_array.apply(np.min)
-#                 y_max = y_array.apply(np.max)
-#
-#                 if 'ber' in y_value_key:
-#                     mask = (y_max <= ber_fec_threshold)
-#                     x_values_filtered = x_values[mask]
-#                     y_mean_filtered = y_mean[mask]
-#                     y_min_filtered = y_min[mask]
-#                     y_max_filtered = y_max[mask]
-#                     plt.plot(
-#                         x_values_filtered, y_mean_filtered, marker + '-',
-#                         color=color, label=cr_label_for_plot
-#                     )
-#                     plt.fill_between(
-#                         x_values_filtered, y_min_filtered,
-#                         y_max_filtered, alpha=0.3, color=color
-#                     )
-#                 else:
-#                     mask = (y_max <= evm_fec_threshold[bits_per_symbol])
-#                     x_values_filtered = x_values[mask]
-#                     y_mean_filtered = y_mean[mask] * 100
-#                     y_min_filtered = y_min[mask] * 100
-#                     y_max_filtered = y_max[mask] * 100
-#                     plt.plot(
-#                         x_values_filtered, y_mean_filtered, marker + '-',
-#                         color=color, label=cr_label_for_plot
-#                     )
-#                     plt.fill_between(
-#                         x_values_filtered, y_min_filtered,
-#                         y_max_filtered, alpha=0.3, color=color
-#                     )
-#
-#             if plot_fec_th_line:
-#                 if 'ber' in y_value_key:
-#                     plt.axhline(
-#                         ber_fec_threshold, color='darkred', linestyle=':', linewidth=2.5,
-#                         label=f"FEC threshold = {ber_fec_threshold:.0e}"
-#                     )
-#                 else:
-#                     plt.axhline(
-#                         evm_fec_threshold[bits_per_symbol] * 100, color='darkred', linestyle=':', linewidth=2.5,
-#                         label=f"FEC threshold = {evm_fec_threshold[bits_per_symbol] * 100:.2f} %"
-#                     )
-#             plt.xlabel(xlabel)
-#             plt.ylabel(plot_dict['ylabel'])
-#             plt.title(f"{plot_dict['title']} vs {xlabel} ({modulation_label})\n{substring_for_title}")
-#             plt.grid(True, which='both')
-#             plt.legend(loc='best')
-#             plt.tight_layout()
-#             plt.show()
+                # Set scale: BER → semi logy; EVM → linear
+                plt.yscale('log' if is_ber else 'linear')
+
+            if plot_fec_th_line:
+                if 'ber' in y_value_key:
+                    plt.axhline(
+                        ber_fec_threshold, color='darkred', linestyle=':', linewidth=2.5,
+                        label=f"FEC threshold = {ber_fec_threshold:.0e}"
+                    )
+                else:
+                    plt.axhline(
+                        evm_fec_threshold[bits_per_symbol] * 100, color='darkred', linestyle=':', linewidth=2.5,
+                        label=f"FEC threshold = {evm_fec_threshold[bits_per_symbol] * 100:.2f} %"
+                    )
+
+            plt.xlabel(xlabel)
+            plt.ylabel(plot_dict['ylabel'])
+            plt.title(f"{plot_dict['title']} vs {xlabel} ({modulation_label})\n{substring_for_title}")
+            plt.grid(True, which='both')
+            plt.legend(loc='best')
+            plt.tight_layout()
+
+            # === Save figure ===
+            filename = (f"{modulation_label.replace(' ', '_')}_"
+                        f"{sweep_key.replace(' ', '_')}_{y_value_key.replace(' ', '_')}.png")
+            save_path = os.path.join(save_dir, filename)
+            plt.tight_layout()
+            plt.savefig(save_path, dpi=300)
+            plt.close()
+            print(f"Saved plot to: {save_path}")
+            # plt.show()
 
 # y_values_columns = {
 #     "berTot": {"title": "BER", "ylabel": "BER"},
