@@ -39,7 +39,6 @@ def compute_osnr_penalty(x_data, y_data, theory_y_data, theory_x_data, fec_thres
     return penalty_label
 
 
-
 def plot_multiple_ber(
         kind_of_plot: str,
         algo_type: str,
@@ -367,14 +366,14 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
 
             # Compute SNR (linear) from measured OSNR points
             osnr_dB_vect = data_off[sweep_type]
-            snr_lin = osnr_to_snr(osnr_dB_vect=osnr_dB_vect,
+            snr_lin = osnr_to_snr(OSNR_vect=osnr_dB_vect,
                                   symbol_rate=np.unique(data_off["symbol_rate"]))
 
             # Create a dense and extended OSNR range
             osnr_dB_dense = np.linspace(np.min(osnr_dB_vect) - 5, np.max(osnr_dB_vect) + 5, 1000)
 
             # Convert extended OSNR (dB) → linear SNR
-            snr_lin_dense = osnr_to_snr(osnr_dB_vect=osnr_dB_dense, symbol_rate=np.unique(data_off["symbol_rate"]))
+            snr_lin_dense = osnr_to_snr(OSNR_vect=osnr_dB_dense, symbol_rate=np.unique(data_off["symbol_rate"]))
             ber_theory = theoretical_ber_vs_snr(
                 snr=snr_lin_dense,
                 M=const_cardinality

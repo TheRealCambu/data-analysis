@@ -9,10 +9,19 @@ def theoretical_ber_vs_snr(snr: np.ndarray, M: int) -> np.ndarray:
     return 2 / np.log2(M) * (1 - 1 / np.sqrt(M)) * erfc(np.sqrt(3 * snr / 2 / (M - 1)))
 
 
-def osnr_to_snr(osnr_dB_vect: Union[np.ndarray, float], symbol_rate: float):
+def osnr_to_snr(OSNR_vect: Union[np.ndarray, float], symbol_rate: float, input_type: str = "dB") -> np.ndarray:
+    osnr = np.asarray(OSNR_vect, dtype=np.float32)
+
+    if input_type == "dB":
+        osnr_lin_vect = 10 ** (osnr / 10)
+    elif input_type == "lin":
+        osnr_lin_vect = osnr
+    else:
+        raise ValueError("input_type must be either 'lin' or 'dB'")
+
     rx_bw_Hz = symbol_rate / 2
-    osnr_lin_vect = 10 ** (0.1 * osnr_dB_vect)
-    snr_lin_vect = osnr_lin_vect * 12.5e9 / rx_bw_Hz / 2
+    snr_lin_vect = osnr_lin_vect * (12.5e9 / rx_bw_Hz) / 2
+
     return snr_lin_vect
 
 
@@ -34,7 +43,7 @@ def beta_i_function(i: int) -> float:
     return 2 * i - 1
 
 
-def evm_one(osnr_value: float, k: float, M: int, bits_per_symbol: int) -> float:
+def evm_one(osnr_value: float, k: float, bits_per_symbol: int, M: int) -> float:
     a1 = 1.0 / osnr_value
     a2 = np.sqrt(96.0 / (np.pi * (M - 1) * osnr_value))
     b = 12.0 / (M - 1)
@@ -105,7 +114,9 @@ def theoretical_evm_from_ber(
 ):
     L = np.sqrt(M)
     # Get modulation-dependent normalization factor
-    k = get_k(bits_per_symbol=int(np.sqrt(M)))
+    k = get_k(
+        bits_per_symbol=int(np.sqrt(M))
+    )
     # Convert to numpy array
     ber = np.asarray(ber, dtype=np.float64)
 

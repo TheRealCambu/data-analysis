@@ -1,10 +1,11 @@
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import os
 
-from commun_utils.utils import apply_plt_personal_settings
 from commun_utils.theoretical_formulas import theoretical_evm_from_ber
+from commun_utils.utils import apply_plt_personal_settings
 
 
 def merge_lists(series):
@@ -164,7 +165,7 @@ for modulation_label, bits_per_symbol in mod_order.items():
                 is_ber = 'ber' in y_value_key.lower()
                 threshold = ber_fec_threshold if is_ber else evm_fec_threshold[bits_per_symbol]
                 # threshold = 0.6 if is_ber else 150 / 100
-                scale = 1 if is_ber else 100  # EVM in %, BER stays linear
+                scale = 1 if is_ber else 100
 
                 mask = (y_max <= threshold)
 
