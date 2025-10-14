@@ -13,13 +13,13 @@ def apply_plt_personal_settings():
     plt.rc('ytick', labelsize=13, direction='in', right=True)
 
     # Legend
-    plt.rc('legend', fontsize=14)
+    plt.rc('legend', fontsize=15)
 
     # Grid style
     plt.rc('grid', linestyle='--', linewidth=0.4, color='gray')
 
     # Figure size
-    plt.rc('figure', figsize=(10, 6.5))
+    plt.rc('figure', figsize=(10, 6.7))
 
 
 def filter_outliers(
