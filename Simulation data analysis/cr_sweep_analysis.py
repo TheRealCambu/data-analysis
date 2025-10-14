@@ -77,6 +77,10 @@ df_godard.insert(insert_loc_for_clock_recovery_algo_column, "clock_recovery_algo
 
 df = pd.merge(df_gardner_fd, df_godard, how="outer")
 
+symbol_rate = np.unique(df['symbol_rate'])
+assert len(symbol_rate) == 1
+symbol_rate = symbol_rate.item() / 1e9
+
 # Drop the symbol rate columns since it is unique
 df.drop(['symbol_rate', 'repeat'], axis=1, inplace=True)
 
@@ -85,12 +89,40 @@ y_values_columns = {
     "EVMTot": {"title": "EVM", "ylabel": "EVM [%]"},
 }
 
+# sweep_columns_dict = {
+#     "rolloff": {"idx": [0, 9], "xlabel": r'$\beta$', "uom": ""},
+#     "jitter_amp": {"idx": [9, 20], "xlabel": r'$\mathrm{jitter}_{\mathrm{amp}}$', "uom": "symbols"},
+#     "jitter_df": {"idx": [20, 27], "xlabel": r'$\mathrm{jitter}_{\mathrm{df}}$', "uom": "MHz"},
+#     "freq_off_ppm": {"idx": [27, 36], "xlabel": r'$\Delta f$', "uom": "ppm"},
+#     "samp_delay": {"idx": [36, 47], "xlabel": r'$\Delta_{\mathrm{sym}}$', "uom": "symbols"}
+# }
+
 sweep_columns_dict = {
-    "rolloff": {"idx": [0, 9], "xlabel": r'$\beta$'},
-    "jitter_amp": {"idx": [9, 20], "xlabel": r'$\mathrm{jitter}_{\mathrm{amp}}$'},
-    "jitter_df": {"idx": [20, 27], "xlabel": r'$\mathrm{jitter}_{\mathrm{df}}$'},
-    "freq_off_ppm": {"idx": [27, 36], "xlabel": r'$\Delta f_{\mathrm{ppm}}$'},
-    "samp_delay": {"idx": [36, 47], "xlabel": r'$\mathrm{sampling\ delay}$'}
+    "rolloff": {
+        "idx": [0, 9],
+        "xlabel": r"$\beta$",
+        "uom": ""  # dimensionless
+    },
+    "jitter_amp": {
+        "idx": [9, 20],
+        "xlabel": r"$A_{\mathrm{pp}}$",
+        "uom": "symbols"
+    },
+    "jitter_df": {
+        "idx": [20, 27],
+        "xlabel": r"$f_{\mathrm{jitter}}$",
+        "uom": "MHz"
+    },
+    "freq_off_ppm": {
+        "idx": [27, 36],
+        "xlabel": r"$\mathrm{SFO}_{\mathrm{ppm}}$",
+        "uom": "ppm"
+    },
+    "samp_delay": {
+        "idx": [36, 47],
+        "xlabel": r"$\Delta_{\mathrm{sym}}$",
+        "uom": "symbols"
+    }
 }
 
 sweep_columns_dict_keys = sweep_columns_dict.keys()
@@ -122,12 +154,16 @@ groups = df.groupby(['mod_order', 'clock_recovery_algo'])
 # Apply personal matplotlib settings
 apply_plt_personal_settings()
 
+# TODO: insert the FEC threshold and theoretical BER
+
 for modulation_label, bits_per_symbol in mod_order.items():
     for sweep_key, sweep_info in sweep_columns_dict.items():
         xlabel = sweep_info['xlabel']
         start_idx, stop_idx = sweep_info["idx"]
 
         for y_value_key, plot_dict in y_values_columns.items():
+            is_ber = 'ber' in y_value_key.lower()
+            scale = 1 if is_ber else 100
             plt.figure()
             for idx, (cr_algo_label, cr_label_for_plot) in enumerate(cr_algo.items()):
                 # print(f"Bits per symbol: {bits_per_symbol} -- Algorithm: {cr_algo_label}")
@@ -146,11 +182,16 @@ for modulation_label, bits_per_symbol in mod_order.items():
 
                 all_keys_but_current = [k for k in sweep_columns_dict_keys if k != sweep_key]
                 substring_for_title = ", ".join(
-                    f"{sweep_columns_dict[k]['xlabel']}: {np.unique(df_slice[k])[0]}"
+                    f"{sweep_columns_dict[k]['xlabel']}="
+                    f"{(np.unique(df_slice[k])[0] / (1e6 if k == 'jitter_df' else 1.0)):.1f}"
+                    f"{'MHz' if k == 'jitter_df' else ''}"
                     for k in all_keys_but_current
                 )
 
-                x_values = df_slice[sweep_key]
+                if sweep_key == "jitter_df":
+                    x_values = df_slice[sweep_key] / 1e6
+                else:
+                    x_values = df_slice[sweep_key]
                 plt.xlim(left=np.min(x_values) * 0.94, right=np.max(x_values) * 1.02)
 
                 # Convert string arrays to numeric and take mean, min, and max per row
@@ -162,11 +203,7 @@ for modulation_label, bits_per_symbol in mod_order.items():
                 y_min = y_array.apply(np.min)
                 y_max = y_array.apply(np.max)
 
-                is_ber = 'ber' in y_value_key.lower()
                 threshold = ber_fec_threshold if is_ber else evm_fec_threshold[bits_per_symbol]
-                # threshold = 0.6 if is_ber else 150 / 100
-                scale = 1 if is_ber else 100
-
                 mask = (y_max <= threshold)
 
                 # Apply mask consistently to all arrays to avoid misalignment warnings
@@ -178,7 +215,7 @@ for modulation_label, bits_per_symbol in mod_order.items():
                 # Plot
                 plt.plot(
                     x_filtered, y_mean_filtered, marker + '-', color=color,
-                    label=cr_label_for_plot + f" (@ {np.unique(df_slice['sps_cr'])[0]:.2f} SpS)"
+                    label=cr_label_for_plot + f" | SpS={np.unique(df_slice['sps_cr'])[0]:.2f}"
                 )
                 plt.fill_between(
                     x_filtered, y_min_filtered, y_max_filtered, alpha=0.3, color=color
@@ -195,16 +232,18 @@ for modulation_label, bits_per_symbol in mod_order.items():
                     )
                 else:
                     plt.axhline(
-                        evm_fec_threshold[bits_per_symbol] * 100, color='darkred', linestyle=':', linewidth=2.5,
-                        label=f"FEC threshold = {evm_fec_threshold[bits_per_symbol] * 100:.2f} %"
+                        evm_fec_threshold[bits_per_symbol] * scale, color='darkred', linestyle=':', linewidth=2.5,
+                        label=f"FEC threshold = {evm_fec_threshold[bits_per_symbol] * scale:.2f} %"
                     )
-
-            plt.xlabel(xlabel)
+            extra_xlabel = '' if sweep_info['uom'] == '' else f" [{sweep_info['uom']}]"
+            plt.xlabel(xlabel + extra_xlabel)
             plt.ylabel(plot_dict['ylabel'])
-            plt.title(f"{plot_dict['title']} vs {xlabel} ({modulation_label})\n{substring_for_title}")
+            plt.title(f"{plot_dict['title']} vs {xlabel} ({modulation_label}@{symbol_rate:.0f}Gbaud)"
+                      f"\n{substring_for_title}")
             plt.grid(True, which='both')
             plt.legend(loc='best')
             plt.tight_layout()
+            # plt.show()
 
             # === Save figure ===
             filename = (f"{modulation_label.replace(' ', '_')}_"
@@ -214,25 +253,3 @@ for modulation_label, bits_per_symbol in mod_order.items():
             plt.savefig(save_path, dpi=300)
             plt.close()
             print(f"Saved plot to: {save_path}")
-            # plt.show()
-
-# y_values_columns = {
-#     "berTot": {"title": "BER", "ylabel": "BER"},
-#     "berX": {"title": "BER (X Pol)", "ylabel": "BER"},
-#     "berY": {"title": "BER (Y Pol)", "ylabel": "BER"},
-#     "EVMTot": {"title": "EVM", "ylabel": "EVM [%]"},
-#     "EVMX": {"title": "EVM (X Pol)", "ylabel": "EVM [%]"},
-#     "EVMY": {"title": "EVM (Y Pol)", "ylabel": "EVM [%]"},
-#     "berEVMTot": {"title": "BER$_{\mathrm{EVM}}", "ylabel": "BER$_{\mathrm{EVM}}"},
-#     "berEVMX": {"title": "BER$_{\mathrm{EVM}} (X Pol)", "ylabel": "BER$_{\mathrm{EVM}}"},
-#     "berEVMY": {"title": "BER$_{\mathrm{EVM}} (Y Pol)", "ylabel": "BER$_{\mathrm{EVM}}"}
-# }
-
-# y_values_columns = {
-#     "berTot": {"title": "BER", "ylabel": "BER"},
-#     "berX": {"title": "BER (X Pol)", "ylabel": "BER"},
-#     "berY": {"title": "BER (Y Pol)", "ylabel": "BER"},
-#     "EVMTot": {"title": "EVM", "ylabel": "EVM [%]"},
-#     "EVMX": {"title": "EVM (X Pol)", "ylabel": "EVM [%]"},
-#     "EVMY": {"title": "EVM (Y Pol)", "ylabel": "EVM [%]"},
-# }

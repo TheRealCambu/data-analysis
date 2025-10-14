@@ -40,7 +40,7 @@ ber_filter_threshold = 0.1732
 
 y_values_columns = {
     "berTot": {"title": "BER", "ylabel": "BER"},
-    "EVMTot": {"title": "EVM", "ylabel": "EVM [%]"},
+    # "EVMTot": {"title": "EVM", "ylabel": "EVM [%]"},
     # "berEVMTot": {"title": "BER$_{\mathrm{EVM}}$", "ylabel": r"BER$_{\mathrm{EVM}}$"}
 }
 # y_values_columns = {
@@ -110,7 +110,7 @@ for plot_type, plot_type_dict in y_values_columns.items():
                 )
                 scale = 100
             plt.figure()
-            plt.xlim(left=np.min(OSNR_dB_vect) - 0.5, right=np.max(OSNR_dB_vect) - 0.8)
+            plt.xlim(left=np.min(OSNR_dB_vect) - 0.5, right=np.max(OSNR_dB_vect) - 0.5)
             for idx, (data_dict_first, data_dict_second) in enumerate(zip(load_npz_vect_first, load_npz_vect_second)):
                 marker = markers[idx % len(markers)]
                 color = colors[idx]
@@ -175,13 +175,27 @@ for plot_type, plot_type_dict in y_values_columns.items():
                 fec_threshold_label = f"FEC threshold={fec_threshold:.2f}%"
 
             plt.axhline(fec_threshold, color='darkred', linestyle=':', linewidth=2.5, label=fec_threshold_label)
+            if is_ber:
+                if mod_format == "QPSK":
+                    bottom_ylim = 6e-5
+                    top_ylim = 6e-2
+                else:
+                    bottom_ylim = 3e-4
+                    top_ylim = 1.2e-1
+            else:
+                if mod_format == "QPSK":
+                    bottom_ylim = 24
+                    top_ylim = 6e-2
+                else:
+                    bottom_ylim = 9
+                    top_ylim = 1.2e-1
+            plt.ylim(bottom=bottom_ylim, top=top_ylim)
             # Labels and title
             plt.yscale("log" if is_ber else "linear")
             plt.xlabel("OSNR [dB] per 0.1nm")
             plt.ylabel(plot_type_dict["ylabel"])
             plt.title(
-                f"{plot_type_dict['title']} vs OSNR\n"
-                f"Modulation format: {modulation_format}, Symbol rate: {symbol_rate / 1e9:.0f}GBaud"
+                f"{plot_type_dict['title']} vs OSNR ({modulation_format}@{symbol_rate / 1e9:.0f}GBaud)"
             )
             plt.legend(loc="best")
             plt.grid(True, which="both")
