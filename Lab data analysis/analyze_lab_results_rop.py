@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import MultipleLocator
 
+from commun_utils.theoretical_formulas import (
+    theoretical_evm_from_ber,
+)
 from commun_utils.utils import apply_plt_personal_settings, filter_outliers
 
 
@@ -49,18 +52,18 @@ def plot_multiple_ber(
     for idx, (data_vector, x_idx, x_data, legend_label) in enumerate(zip(
             data_vectors, x_values_sorted_indices_list, x_values_data_list, legend_labels
     )):
-        # # Filter outliers
-        # if ((filter_threshold < 5e-1 and "ber" in kind_of_plot) or
-        #     (filter_threshold < 1.5 and "ber" not in kind_of_plot)) and not alternative_plot:
-        filtered_data_tot = np.array(
-            filter_outliers(
-                upper_threshold=filter_threshold,
-                lower_threshold=1e-30,
-                input_values=data_vector[x_idx]
+        # Filter outliers
+        if ((filter_threshold < 5e-1 and "ber" in kind_of_plot) or
+            (filter_threshold < 1.5 and "ber" not in kind_of_plot)) and not alternative_plot:
+            filtered_data_tot = np.array(
+                filter_outliers(
+                    upper_threshold=filter_threshold,
+                    lower_threshold=1e-30,
+                    input_values=data_vector[x_idx]
+                )
             )
-        )
-        # else:
-        #     filtered_data_tot = np.array(data_vector[x_idx])
+        else:
+            filtered_data_tot = np.array(data_vector[x_idx])
 
         # Each row corresponds to a single x value with multiple samples
         # We keep a row only if it has at least one non-NaN and nonzero value
@@ -110,10 +113,10 @@ def plot_multiple_ber(
             elif alternative_plot == 'min':
                 mask = (data_min <= filter_threshold) & (data_min > 1e-32)
                 x_data_filtered = x_data_valid[mask]
-                filtered_data_min = data_min[mask]
-                plt.plot(x_data_filtered, filtered_data_min * 100, marker + '-', color=color, label=f"{legend_label}")
-                plt.yticks(np.arange(np.min(filtered_data_min * 100) - 2, np.max(filtered_data_min * 100) + 2, 8))
-                # plt.yticks(np.arange(np.min(filtered_data_min * 100) - 2, np.max(filtered_data_min * 100) + 2, 2))
+                filtered_data_min = data_min[mask] * 100
+                plt.plot(x_data_filtered, filtered_data_min, marker + '-', color=color, label=f"{legend_label}")
+                # plt.yticks(np.arange(np.min(filtered_data_min * 100) - 2, np.max(filtered_data_min * 100) + 2, 8))
+                plt.yticks(np.arange(np.min(filtered_data_min) - 1, np.max(filtered_data_min) + 1, 2))
                 temp = 'Minimum'
                 vector_lengths.append(x_data_filtered)
             else:
@@ -124,19 +127,47 @@ def plot_multiple_ber(
 
     temp_min = np.min([np.min(x) for x in vector_lengths if len(x) > 0])
     temp_max = np.max([np.max(x) for x in vector_lengths if len(x) > 0])
-    if 'evm' not in kind_of_plot:
-        plt.xticks(np.arange(temp_min, temp_max, 4))
-        # plt.xticks(np.arange(temp_min - 0.6, temp_max + 0.6, 1))
-        # plt.xlim(right=-28.3)
-        # plt.ylim(bottom=9e-6)
-    else:
-        plt.xticks(np.arange(temp_min, temp_max, 4))
+
+    ############# QPSK ##############
+    plt.xticks(np.arange(temp_min - 1, temp_max + 2, 2))
+    plt.xlim(right=-15)
+    # if 'evm' not in kind_of_plot:
+    #     # plt.xticks(np.arange(temp_min, temp_max, 4))
+    #     plt.xticks(np.arange(temp_min - 0.6, temp_max + 0.6, 1))
+    #     plt.xlim(right=-28.3)
+    #     # plt.xlim(right=-29)
+    #     plt.ylim(bottom=9e-6)
+    # else:
+    #     plt.xticks(np.arange(temp_min, temp_max, 4))
+
+    # plt.xticks(np.arange(temp_min - 0.6, temp_max + 3, 2))
+    # plt.xlim(left=-33, right=-15.5)
+    # if 'evm' in kind_of_plot:
+    #     plt.ylim(top=21, bottom=7)
+    # else:
+    #     plt.ylim(top=5e-2, bottom=8e-6)
+
+    # # This is for plotting evm and ber_evm with a zoom between -39 and -18
+    # if 'ber' in kind_of_plot:
+    #     plt.xticks(np.arange(temp_min - 0.6, temp_max + 0.6, 3))
+    #     plt.xlim(right=-18)
+    #     plt.ylim(bottom=1e-16)
+    # else:
+    #     plt.xticks(np.arange(temp_min - 0.6, temp_max + 0.6, 3))
+    #     plt.xlim(right=-18)
+    #     plt.ylim(bottom=8)
+    ########################################################################
 
     # Reference lines
     if "ber" in kind_of_plot:
         plt.axhline(
             fec_threshold, color='darkred', linestyle=':', linewidth=2.5,
-            label=f"FEC threshold = {fec_threshold:.0e}"
+            label=f"FEC threshold={fec_threshold:.0e}"
+        )
+    else:
+        plt.axhline(
+            fec_threshold * 100, color='darkred', linestyle=':', linewidth=2.5,
+            label=f"FEC threshold={fec_threshold * 100:.2f}%"
         )
 
     # Labels and title
@@ -148,7 +179,7 @@ def plot_multiple_ber(
     plt.tight_layout()
 
     if save_plot:
-        image_name = filename.replace("PROCESSED_rop_sweep", "").replace(".npz", "")
+        image_name = filename.replace("PROCESSED_rop_sweep", "").replace(".npz", "").replace('_v1', '')
         if alternative_plot in ["min", "max"]:
             base_string_for_saving_image = f"{alternative_plot}_" + base_string_for_saving_image
         full_path = os.path.join(
@@ -162,9 +193,9 @@ def plot_multiple_ber(
 
 
 # --- File setup ---
-# root_folder = r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT"
-root_folder = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico"
-               r"\Tesi\Data-analysis\Lab results\v3 - Processed Datasets -- First OPT")
+root_folder = r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT"
+# root_folder = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico"
+#                r"\Tesi\Data-analysis\Lab results\v3 - Processed Datasets -- First OPT")
 sweep_type = 'rop'
 folder_to_store_images = os.path.join(root_folder, "Final Plots", sweep_type.upper())
 
@@ -173,11 +204,11 @@ apply_plt_personal_settings()
 
 # One .npz per algorithm and configuration
 files_dict = {
-    "30GBd QPSK": {
-        "Gardner": os.path.join(root_folder, "Gardner", "30GBd QPSK", "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz"),
-        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd QPSK",
-                                         "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz")
-    },
+    # "30GBd QPSK": {
+    #     "Gardner": os.path.join(root_folder, "Gardner", "30GBd QPSK", "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz"),
+    #     "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd QPSK",
+    #                                      "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz")
+    # },
     # "30GBd 16QAM": {
     #     "Gardner": os.path.join(root_folder, "Gardner", "30GBd 16QAM",
     #                             "PROCESSED_rop_sweep_30GBd_DP_16QAM_w_dpe_v1.npz"),
@@ -190,12 +221,12 @@ files_dict = {
     #     "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd QPSK",
     #                                      "PROCESSED_rop_sweep_34_28GBd_DP_QPSK_w_dpe_v1.npz")
     # },
-    # "34.28GBd 16QAM": {
-    #     "Gardner": os.path.join(root_folder, "Gardner", "34.28GBd 16QAM",
-    #                             "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz"),
-    #     "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd 16QAM",
-    #                                      "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz")
-    # },
+    "34.28GBd 16QAM": {
+        "Gardner": os.path.join(root_folder, "Gardner", "34.28GBd 16QAM",
+                                "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz"),
+        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd 16QAM",
+                                         "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz")
+    },
 }
 
 # --- Main plotting loop ---
@@ -227,8 +258,9 @@ for baud_rate_and_mod_format, algo_files in files_dict.items():
         x_values_sorted_indices_fd = np.argsort(fd_data)
         x_values_data_fd = fd_data[x_values_sorted_indices_fd]
 
-        for kind_of_plot in ['ber', 'evm', 'ber_evm']:
-        # for kind_of_plot in ['ber', 'evm']:
+        # for kind_of_plot in ['ber', 'evm', 'ber_evm']:
+        for kind_of_plot in ['ber', 'evm']:
+        # for kind_of_plot in ['evm', 'ber_evm']:
         # for kind_of_plot in ['ber']:
             for polarization in ['_tot', '_x', '_y']:
                 key = kind_of_plot + polarization
@@ -238,20 +270,27 @@ for baud_rate_and_mod_format, algo_files in files_dict.items():
                     final_title_label = title_label_for_plot_tot + ', Y Pol)'
                 else:
                     final_title_label = title_label_for_plot_tot + ')'
+                # ber_filter = 5e-1
+                ber_filter = 4e-2
+                evm_filter = theoretical_evm_from_ber(ber_filter, M=const_cardinality)
+                if evm_filter < 0:
+                    evm_filter = 150 / 100
+                ber_fec_threshold = 2e-2
+                evm_fec_threshold = theoretical_evm_from_ber(ber_fec_threshold, M=const_cardinality)
+                if evm_fec_threshold < 0:
+                    evm_fec_threshold = 150 / 100
                 plot_multiple_ber(
                     kind_of_plot=kind_of_plot,
                     data_vectors=[data_gardner[key], data_freqdom[key]],
-                    filter_threshold=6e-1 if 'ber' in kind_of_plot else 1.6,
-                    # filter_threshold=2e-2 if 'ber' in kind_of_plot else 0.21,  # 16QAM
-                    # filter_threshold=2e-2 if 'ber' in kind_of_plot else 0.55,  # QPSK
-                    fec_threshold=2e-2,
+                    filter_threshold=ber_filter if 'ber' in kind_of_plot else evm_filter,
+                    fec_threshold=ber_fec_threshold if 'ber' in kind_of_plot else evm_fec_threshold,
                     filename=os.path.basename(gardner_file),
                     x_values_sorted_indices_list=[x_values_sorted_indices_gardner, x_values_sorted_indices_fd],
                     x_values_data_list=[x_values_data_gardner, x_values_data_fd],
                     extra_title_label=final_title_label,
-                    legend_labels=["GardnerTimeRec", "FDTimeRec"],
+                    legend_labels=["Gardner", "FD"],
                     save_plot=True,
                     directory_to_save_images=folder_to_store_images,
                     base_string_for_saving_image=f"{key}_vs_rop",
-                    alternative_plot=""
+                    alternative_plot="min"
                 )

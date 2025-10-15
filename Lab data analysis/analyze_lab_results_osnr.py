@@ -9,6 +9,7 @@ from commun_utils.theoretical_formulas import (
     theoretical_ber_vs_snr,
     theoretical_evm_vs_osnr,
     theoretical_ber_from_evm,
+    theoretical_evm_from_ber,
     osnr_to_snr
 )
 from commun_utils.utils import apply_plt_personal_settings, filter_outliers
@@ -33,7 +34,7 @@ def compute_osnr_penalty(x_data, y_data, theory_y_data, theory_x_data, fec_thres
             f_theory_interp = interp1d(theory_y_data, theory_x_data, bounds_error=False)
             osnr_theory_at_fec = float(f_theory_interp(fec_threshold))
             osnr_penalty = osnr_data_at_fec - osnr_theory_at_fec
-            penalty_label = f"  (Penalty @ FEC: {osnr_penalty:.2f} dB)"
+            penalty_label = f" | Penalty@FEC={osnr_penalty:.2f}dB"
         except (ValueError, TypeError) as e:
             print(f"[Warning] Could not compute theoretical OSNR at FEC: {e}")
     return penalty_label
@@ -219,9 +220,9 @@ def plot_multiple_ber(
     temp_min = np.min([np.min(x) for x in vector_lengths if len(x) > 0])
     temp_max = np.max([np.max(x) for x in vector_lengths if len(x) > 0])
     plt.xticks(np.arange(temp_min - 1, temp_max + 1, 1))
-    # plt.xlim(left=9.5, right=17.5)  # 30 GBd
+    plt.xlim(left=9.15, right=17.5)  # 30 GBd
     # plt.xlim(left=9.5, right=18.5)  # 34.28 GBd
-    plt.xlim(left=10.5, right=20.1)  # 40 GBd
+    # plt.xlim(left=10.5, right=20.1)  # 40 GBd
 
     if 'ber' in kind_of_plot:
         plt.semilogy(
@@ -231,9 +232,9 @@ def plot_multiple_ber(
         if 'evm' in kind_of_plot:
             plt.xticks(np.arange(temp_min - 3, temp_max + 3, 3))
             plt.xlim(left=10.5, right=39)
-            # plt.ylim(top=8e-2, bottom=1e-21)  # 30 GBd
+            plt.ylim(top=8e-2, bottom=1e-21)  # 30 GBd
             # plt.ylim(top=8e-2, bottom=1e-18)  # 34.28 GBd
-            plt.ylim(top=8e-2, bottom=1e-15)  # 40 GBd
+            # plt.ylim(top=8e-2, bottom=1e-15)  # 40 GBd
         else:
             plt.ylim(top=8e-2, bottom=6e-5)
             # plt.ylim(top=8e-2, bottom=2e-3)
@@ -244,10 +245,14 @@ def plot_multiple_ber(
         )
         plt.ylim(top=60, bottom=15)
 
-    # ################### 16QAM #######################
+    # #################### 16QAM #######################
     # temp_min = np.min([np.min(x) for x in vector_lengths if len(x) > 0])
     # temp_max = np.max([np.max(x) for x in vector_lengths if len(x) > 0])
     # plt.xticks(np.arange(temp_min - 1, temp_max + 1, 1))
+    # # plt.xlim(left=16.0, right=25.2)
+    # # plt.xlim(left=15.7, right=23.7)
+    #
+    # # Zoomed
     # plt.xlim(left=16.0, right=25.2)
     # # plt.xlim(left=15.7, right=23.7)
     #
@@ -260,10 +265,10 @@ def plot_multiple_ber(
     #         plt.xticks(np.arange(temp_min - 3, temp_max + 3, 3))
     #         plt.xlim(left=16.0, right=38.3)
     #         plt.ylim(top=8e-2, bottom=1e-5)
-    #         # plt.ylim(top=8e-2, bottom=2e-6)
+    #         # plt.ylim(top=6e-2, bottom=2e-6)
     #     else:
     #         plt.ylim(top=8e-2, bottom=2e-3)
-    #         # plt.ylim(top=8e-2, bottom=2e-3)
+    #         # plt.ylim(top=6e-2, bottom=2e-3)
     # else:
     #     plt.plot(
     #         x_values_dense, theory_value * 100, '-.',
@@ -272,10 +277,15 @@ def plot_multiple_ber(
     #     plt.ylim(top=26, bottom=4)
 
     # Reference lines
-    if kind_of_plot not in ["evm", "ber_evm"]:
+    if kind_of_plot == "ber":
         plt.axhline(
             fec_threshold, color='darkred', linestyle=':', linewidth=2.5,
-            label=f"FEC threshold = {fec_threshold:.0e}"
+            label=f"FEC threshold={fec_threshold:.0e}"
+        )
+    elif kind_of_plot == "evm":
+        plt.axhline(
+            fec_threshold * 100, color='darkred', linestyle=':', linewidth=2.5,
+            label=f"FEC threshold={fec_threshold * 100:.2f}%"
         )
 
     # Labels and title
@@ -287,7 +297,7 @@ def plot_multiple_ber(
     plt.tight_layout()
 
     if save_plot:
-        image_name = filename.replace("PROCESSED_osnr_sweep", "").replace(".npz", "").replace("_wo_dpe_v1", "")
+        image_name = filename.replace("PROCESSED_osnr_sweep", "").replace(".npz", "").replace("_wo_dpe_v1", "").replace("_w_dpe_v1", "")
         if alternative_plot in ["min", "max"]:
             base_string_for_saving_image = f"{alternative_plot}_" + base_string_for_saving_image
         full_path = os.path.join(
@@ -300,21 +310,21 @@ def plot_multiple_ber(
     plt.show()
 
 
-# root_folder = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico"
-#                r"\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT")
-
 root_folder = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico"
-               r"\Tesi\Data-analysis\Lab results\v3 - Processed Datasets -- First OPT")
+               r"\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT")
 
-# tr_algo_list = ["Gardner", "Frequency Domain"]
+# root_folder = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico"
+#                r"\Tesi\Data-analysis\Lab results\v3 - Processed Datasets -- First OPT")
+
+tr_algo_list = ["Gardner", "Frequency Domain"]
 # baud_rate_and_mod_format_list = ["30GBd QPSK", "34.28GBd QPSK", "40GBd QPSK", "30GBd 16QAM", "34.28GBd 16QAM"]
-tr_algo_list = ["Gardner"]
+# tr_algo_list = ["Gardner"]
 # tr_algo_list = ["Frequency Domain"]
 # baud_rate_and_mod_format_list = ["30GBd QPSK"]
 # baud_rate_and_mod_format_list = ["34.28GBd QPSK"]
-baud_rate_and_mod_format_list = ["40GBd QPSK"]
+# baud_rate_and_mod_format_list = ["40GBd QPSK"]
 # baud_rate_and_mod_format_list = ["30GBd 16QAM"]
-# baud_rate_and_mod_format_list = ["34.28GBd 16QAM"]
+baud_rate_and_mod_format_list = ["34.28GBd 16QAM"]
 
 sweep_type = 'osnr'
 folder_to_store_images = os.path.join(root_folder, "Final Plots", sweep_type.upper())
@@ -403,8 +413,8 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
             # Apply plotting settings
             apply_plt_personal_settings()
 
-            # for kind_of_plot in ["ber"]:
-            for kind_of_plot in ["ber", "evm", "ber_evm"]:
+            for kind_of_plot in ["ber", "evm"]:
+            # for kind_of_plot in ["ber", "evm", "ber_evm"]:
                 theory_value = {
                     "ber": ber_theory,
                     "evm": evm_theory,
@@ -420,14 +430,22 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
                     else:
                         temp = title_label_for_plot_tot + ")"
 
+                    # ber_filter = 1e-1
+                    ber_filter = 5e-1
+                    evm_filter = theoretical_evm_from_ber(ber_filter, M=const_cardinality)
+                    if evm_filter < 0:
+                        evm_filter = 150 / 100
+                    ber_fec_threshold = 2e-2
+                    evm_fec_threshold = theoretical_evm_from_ber(ber_fec_threshold, M=const_cardinality)
+                    if evm_fec_threshold < 0:
+                        evm_fec_threshold = 150 / 100
                     # Plot DPE OFF vs DPE ON
                     plot_multiple_ber(
                         kind_of_plot=kind_of_plot,
                         algo_type=algo_type,
                         data_vectors=[data_off[key], data_on[key]],
-                        # filter_threshold=6e-1 if "ber" in kind_of_plot else 1.6,
-                        filter_threshold=4e-1 if "ber" in kind_of_plot else 0.7,
-                        fec_threshold=2e-2,
+                        filter_threshold=ber_filter if 'ber' in kind_of_plot else evm_filter,
+                        fec_threshold=ber_fec_threshold if 'ber' in kind_of_plot else evm_fec_threshold,
                         filename=os.path.basename(wo_dpe_file),
                         x_values_sorted_indices_list=[x_idx_off, x_idx_on],
                         x_values_data_list=[x_values_off, x_values_on],
@@ -438,7 +456,7 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
                         save_plot=True,
                         directory_to_save_images=folder_to_store_images,
                         base_string_for_saving_image=f"{key}_vs_osnr",
-                        alternative_plot=""
+                        alternative_plot="min"
                     )
 
 # Filter outliers

@@ -1,15 +1,11 @@
+import itertools
 import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-from exceptiongroup import catch
-import itertools
 
 from commun_utils.theoretical_formulas import (
-    theoretical_ber_vs_snr,
-    theoretical_evm_vs_osnr,
-    theoretical_evm_from_ber,
-    osnr_to_snr
+    theoretical_evm_from_ber
 )
 from commun_utils.utils import apply_plt_personal_settings
 

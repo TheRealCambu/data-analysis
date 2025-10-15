@@ -9,6 +9,7 @@ from commun_utils.theoretical_formulas import (
     theoretical_ber_vs_snr,
     theoretical_evm_vs_osnr,
     theoretical_ber_from_evm,
+    theoretical_evm_from_ber,
     osnr_to_snr
 )
 from commun_utils.utils import apply_plt_personal_settings, filter_outliers
@@ -62,7 +63,7 @@ def plot_multiple_ber(
     )):
         # Filter outliers
         if ((filter_threshold < 5e-1 and "ber" in kind_of_plot) or
-            (filter_threshold < 1.5 and "ber" not in kind_of_plot)) and not plot_max:
+            (filter_threshold < 1.4 and "ber" not in kind_of_plot)) and not plot_max:
             filtered_data_tot = np.array(
                 filter_outliers(
                     upper_threshold=filter_threshold,
@@ -103,7 +104,7 @@ def plot_multiple_ber(
             else:
                 if data_mean.shape[0] > 2:
                     plt.semilogy(x_data_valid, data_mean, marker + '-', color=color, label=f"{legend_label}")
-                    plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
+                    # plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
                     vector_lengths.append(x_data_valid)
         else:
             if plot_max:
@@ -119,7 +120,7 @@ def plot_multiple_ber(
             else:
                 if data_mean.shape[0] > 2:
                     plt.plot(x_data_valid, data_mean * 100, marker + '-', color=color, label=f"{legend_label}")
-                    plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
+                    # plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
                     vector_lengths.append(x_data_valid)
 
     temp_min = np.nanmin([np.nanmin(x) for x in vector_lengths if len(x) > 0])
@@ -128,19 +129,25 @@ def plot_multiple_ber(
 
     # Reference lines
     if "ber" in kind_of_plot:
-        plt.axhline(
-            fec_threshold, color='darkred', linestyle=':', linewidth=2.5,
-            label=f"FEC threshold = {fec_threshold:.0e}"
-        )
+        if osnr_val < 21.0:
+            plt.axhline(
+                fec_threshold, color='darkred', linestyle=':', linewidth=2.5,
+                label=f"FEC threshold={fec_threshold:.0e}"
+            )
         if theory_value > 1e-30:
             plt.axhline(
                 theory_value, color='darkblue', linestyle=':',
-                linewidth=2.5, label=f"Theoretical {label_info['title']} = {theory_value:.2e}"
+                linewidth=2.5, label=f"Theoretical {label_info['title']}={theory_value:.2e}"
             )
     else:
+        if osnr_val < 21.0:
+            plt.axhline(
+                fec_threshold * 100, color='darkred', linestyle=':', linewidth=2.5,
+                label=f"FEC threshold={fec_threshold * 100:.3g}%"
+            )
         plt.axhline(
             theory_value * 100, color='darkblue', linestyle=':', linewidth=2.5,
-            label=f"Theoretical EVM = {theory_value * 100:.3g}%"
+            label=f"Theoretical EVM={theory_value * 100:.3g}%"
         )
 
     # Labels and title
@@ -156,7 +163,7 @@ def plot_multiple_ber(
 
     # Save (after show() or before, both fine)
     if save_plot:
-        image_name = filename.replace("PROCESSED_fo_sweep", "").replace(".npz", "")
+        image_name = filename.replace("PROCESSED_fo_sweep", "").replace(".npz", "").replace('_v1', '')
         if plot_max:
             base_string_for_saving_image = ("max_" if plot_max else "") + base_string_for_saving_image
         full_path = os.path.join(
@@ -243,8 +250,7 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
             apply_plt_personal_settings()
 
             # for kind_of_plot in ['ber', 'evm', 'ber_evm']:
-            # for kind_of_plot in ['ber', 'evm']:
-            for kind_of_plot in ['evm', 'ber_evm']:
+            for kind_of_plot in (['evm', 'ber_evm'] if "QPSK" in baud_rate_and_mod_format and osnr_val > 21 else ['ber', 'evm']):
                 if kind_of_plot == 'ber':
                     theory_value = ber_theory
                 elif kind_of_plot == 'evm':
@@ -261,24 +267,32 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
                     else:
                         temp = title_label_for_plot_tot + ')'
 
+                    # Add EVM fec threshold
+                    ber_filter = 2.01e-2
+                    # ber_filter = 5e-1
+                    evm_filter = theoretical_evm_from_ber(ber_filter, M=const_cardinality)
+                    if evm_filter < 0:
+                        evm_filter = 150 / 100
+                    ber_fec_threshold = 2e-2
+                    evm_fec_threshold = theoretical_evm_from_ber(ber_fec_threshold, M=const_cardinality)
+                    if evm_fec_threshold < 0:
+                        evm_fec_threshold = 150 / 100
                     # Plot both algorithms
                     plot_multiple_ber(
                         kind_of_plot=kind_of_plot,
                         data_vectors=[data_gardner[key], data_freqdom[key]],
-                        # filter_threshold=5e-1 if 'ber' in kind_of_plot else 1.6,
-                        # filter_threshold=2e-2 if 'ber' in kind_of_plot else 0.55,  # QPSK
-                        filter_threshold=2e-2 if 'ber' in kind_of_plot else 0.21,  # 16QAM
-                        fec_threshold=2e-2,
+                        filter_threshold=ber_filter if 'ber' in kind_of_plot else evm_filter,
+                        fec_threshold=ber_fec_threshold if 'ber' in kind_of_plot else evm_fec_threshold,
                         filename=os.path.basename(gardner_file),
                         x_values_sorted_indices_list=[x_values_sorted_indices_gardner, x_values_sorted_indices_fd],
                         x_values_data_list=[x_values_data_gardner, x_values_data_fd],
                         extra_title_label=temp,
-                        legend_labels=["GardnerTimeRec", "FDTimeRec"],
+                        legend_labels=["Gardner", "FD"],
                         theory_value=theory_value,
                         save_plot=True,
                         directory_to_save_images=folder_to_store_images,
                         base_string_for_saving_image=f"{key}_vs_fo",
-                        plot_max=True
+                        plot_max=False
                     )
 
 # tr_algo_list = ["Gardner", "Frequency Domain"]
