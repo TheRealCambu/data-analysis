@@ -288,7 +288,7 @@ for baud_rate_and_mod_format, algo_files in files_dict.items():
                     x_values_sorted_indices_list=[x_values_sorted_indices_gardner, x_values_sorted_indices_fd],
                     x_values_data_list=[x_values_data_gardner, x_values_data_fd],
                     extra_title_label=final_title_label,
-                    legend_labels=["Gardner", "FD"],
+                    legend_labels=["Gardner", "Fast timing-square"],
                     save_plot=True,
                     directory_to_save_images=folder_to_store_images,
                     base_string_for_saving_image=f"{key}_vs_rop",

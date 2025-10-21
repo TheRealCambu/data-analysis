@@ -35,12 +35,15 @@ colors = plt.cm.tab10(np.linspace(0, 1, len(cr_algo_vect)))
 
 ber_fec_threshold = 2e-2
 # ber_filter_threshold = 0.26
-ber_filter_threshold = 0.1732
+# ber_filter_threshold = 0.1732
 # ber_filter_threshold = 0.254
 
+ber_filter_threshold = 0.25
+# ber_filter_threshold = 0.46
+
 y_values_columns = {
-    "berTot": {"title": "BER", "ylabel": "BER"},
-    # "EVMTot": {"title": "EVM", "ylabel": "EVM [%]"},
+    # "berTot": {"title": "BER", "ylabel": "BER"},
+    "EVMTot": {"title": "EVM", "ylabel": "EVM [%]"},
     # "berEVMTot": {"title": "BER$_{\mathrm{EVM}}$", "ylabel": r"BER$_{\mathrm{EVM}}$"}
 }
 # y_values_columns = {
@@ -50,7 +53,7 @@ y_values_columns = {
 # }
 cr_algo_dict = {
     "gardner": "Gardner",
-    "fd": "FD",
+    "fd": "Fast square-timing",
     "godard": "Godard"
 }
 mod_format_dict = {
@@ -101,6 +104,7 @@ for plot_type, plot_type_dict in y_values_columns.items():
                 scale = 1
             else:
                 filter_threshold = theoretical_evm_from_ber(ber=ber_filter_threshold, M=cardinality)
+                print(filter_threshold)
                 if filter_threshold < 0:
                     filter_threshold = 150 / 100
                 theory_curve = theoretical_evm_vs_osnr(
@@ -151,11 +155,11 @@ for plot_type, plot_type_dict in y_values_columns.items():
 
                         if not np.isnan(osnr_measured_at_fec) and not np.isnan(osnr_theoretical_at_fec):
                             osnr_penalty = osnr_measured_at_fec - osnr_theoretical_at_fec
-                            label_with_penalty = f"{cr_algo_label} | SpS={sps_cr} | Penalty@FEC={osnr_penalty:.2f}dB"
+                            label_with_penalty = f"{cr_algo_label} | Penalty@FEC={osnr_penalty:.2f}dB"
                         else:
-                            label_with_penalty = f"{cr_algo_label} | SpS={sps_cr}"
+                            label_with_penalty = f"{cr_algo_label}"
                     else:
-                        label_with_penalty = f"{cr_algo_label} | SpS={sps_cr}"
+                        label_with_penalty = f"{cr_algo_label}"
                     plt.plot(
                         OSNR_dB_vect, current_curve * scale, marker + '-',
                         color=color, label=label_with_penalty
@@ -182,21 +186,18 @@ for plot_type, plot_type_dict in y_values_columns.items():
                 else:
                     bottom_ylim = 3e-4
                     top_ylim = 1.2e-1
+                plt.ylim(bottom=bottom_ylim, top=top_ylim)
             else:
                 if mod_format == "QPSK":
                     bottom_ylim = 24
-                    top_ylim = 6e-2
                 else:
                     bottom_ylim = 9
-                    top_ylim = 1.2e-1
-            plt.ylim(bottom=bottom_ylim, top=top_ylim)
+                plt.ylim(bottom=bottom_ylim)
             # Labels and title
             plt.yscale("log" if is_ber else "linear")
             plt.xlabel("OSNR [dB] per 0.1nm")
             plt.ylabel(plot_type_dict["ylabel"])
-            plt.title(
-                f"{plot_type_dict['title']} vs OSNR ({modulation_format}@{symbol_rate / 1e9:.0f}GBaud)"
-            )
+            plt.title(f"{plot_type_dict['title']} vs OSNR ({modulation_format}@{symbol_rate / 1e9:.0f}GBaud)")
             plt.legend(loc="best")
             plt.grid(True, which="both")
             plt.tight_layout()
@@ -211,4 +212,4 @@ for plot_type, plot_type_dict in y_values_columns.items():
                 filename
             )
             plt.savefig(save_path, dpi=400, bbox_inches='tight')
-            plt.close()  # Close the figure to free memory
+            plt.close()

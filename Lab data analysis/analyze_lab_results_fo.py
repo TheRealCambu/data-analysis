@@ -63,7 +63,7 @@ def plot_multiple_ber(
     )):
         # Filter outliers
         if ((filter_threshold < 5e-1 and "ber" in kind_of_plot) or
-            (filter_threshold < 1.4 and "ber" not in kind_of_plot)) and not plot_max:
+            (filter_threshold < 1.5 and "ber" not in kind_of_plot)) and not plot_max:
             filtered_data_tot = np.array(
                 filter_outliers(
                     upper_threshold=filter_threshold,
@@ -104,7 +104,7 @@ def plot_multiple_ber(
             else:
                 if data_mean.shape[0] > 2:
                     plt.semilogy(x_data_valid, data_mean, marker + '-', color=color, label=f"{legend_label}")
-                    # plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
+                    plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
                     vector_lengths.append(x_data_valid)
         else:
             if plot_max:
@@ -120,7 +120,7 @@ def plot_multiple_ber(
             else:
                 if data_mean.shape[0] > 2:
                     plt.plot(x_data_valid, data_mean * 100, marker + '-', color=color, label=f"{legend_label}")
-                    # plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
+                    plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
                     vector_lengths.append(x_data_valid)
 
     temp_min = np.nanmin([np.nanmin(x) for x in vector_lengths if len(x) > 0])
@@ -176,10 +176,12 @@ def plot_multiple_ber(
     plt.show()
 
 
-root_folder = r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT"
+root_folder = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico"
+               r"\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT")
 tr_algo_list = ["Gardner", "Frequency Domain"]
 # baud_rate_and_mod_format_list = ["30GBd QPSK"]
 baud_rate_and_mod_format_list = ["30GBd 16QAM"]
+# baud_rate_and_mod_format_list = ["30GBd QPSK", "30GBd 16QAM"]
 
 sweep_type = 'fo'
 folder_to_store_images = os.path.join(root_folder, "Final Plots", sweep_type.upper())
@@ -269,8 +271,9 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
 
                     # Add EVM fec threshold
                     ber_filter = 2.01e-2
-                    # ber_filter = 5e-1
+                    # ber_filter = 2.3e-1
                     evm_filter = theoretical_evm_from_ber(ber_filter, M=const_cardinality)
+                    print(evm_filter)
                     if evm_filter < 0:
                         evm_filter = 150 / 100
                     ber_fec_threshold = 2e-2
@@ -287,7 +290,7 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
                         x_values_sorted_indices_list=[x_values_sorted_indices_gardner, x_values_sorted_indices_fd],
                         x_values_data_list=[x_values_data_gardner, x_values_data_fd],
                         extra_title_label=temp,
-                        legend_labels=["Gardner", "FD"],
+                        legend_labels=["Gardner", "Fast square-timing"],
                         theory_value=theory_value,
                         save_plot=True,
                         directory_to_save_images=folder_to_store_images,

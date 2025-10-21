@@ -101,7 +101,7 @@ sweep_columns_dict = {
     "rolloff": {
         "idx": [0, 9],
         "xlabel": r"$\beta$",
-        "uom": ""  # dimensionless
+        "uom": ""
     },
     "jitter_amp": {
         "idx": [9, 20],
@@ -133,13 +133,13 @@ mod_order = {
 }
 
 cr_algo = {
-    "gardner": "GardnerTimeRec",
-    "fd": "FDTimeRec",
-    "godard": "GodardTimeRec"
+    "gardner": "Gardner",
+    "fd": "Fast square-timing",
+    "godard": "Godard"
 }
 
 plot_fec_th_line = False
-ber_fec_threshold = 2e-2
+ber_fec_threshold = 2.01e-2
 evm_fec_threshold = {
     2: theoretical_evm_from_ber(ber_fec_threshold, 4),
     4: theoretical_evm_from_ber(ber_fec_threshold, 16)
@@ -154,7 +154,6 @@ groups = df.groupby(['mod_order', 'clock_recovery_algo'])
 # Apply personal matplotlib settings
 apply_plt_personal_settings()
 
-# TODO: insert the FEC threshold and theoretical BER
 
 for modulation_label, bits_per_symbol in mod_order.items():
     for sweep_key, sweep_info in sweep_columns_dict.items():
@@ -214,8 +213,7 @@ for modulation_label, bits_per_symbol in mod_order.items():
 
                 # Plot
                 plt.plot(
-                    x_filtered, y_mean_filtered, marker + '-', color=color,
-                    label=cr_label_for_plot + f" | SpS={np.unique(df_slice['sps_cr'])[0]:.2f}"
+                    x_filtered, y_mean_filtered, marker + '-', color=color, label=cr_label_for_plot
                 )
                 plt.fill_between(
                     x_filtered, y_min_filtered, y_max_filtered, alpha=0.3, color=color
