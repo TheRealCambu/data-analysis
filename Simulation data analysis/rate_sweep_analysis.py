@@ -38,12 +38,12 @@ ber_fec_threshold = 2e-2
 # ber_filter_threshold = 0.1732
 # ber_filter_threshold = 0.254
 
-ber_filter_threshold = 0.25
-# ber_filter_threshold = 0.46
+# ber_filter_threshold = 0.25
+ber_filter_threshold = 0.46
 
 y_values_columns = {
-    # "berTot": {"title": "BER", "ylabel": "BER"},
-    "EVMTot": {"title": "EVM", "ylabel": "EVM [%]"},
+    "berTot": {"title": "BER", "ylabel": "BER"},
+    # "EVMTot": {"title": "EVM", "ylabel": "EVM [%]"},
     # "berEVMTot": {"title": "BER$_{\mathrm{EVM}}$", "ylabel": r"BER$_{\mathrm{EVM}}$"}
 }
 # y_values_columns = {
@@ -114,7 +114,7 @@ for plot_type, plot_type_dict in y_values_columns.items():
                 )
                 scale = 100
             plt.figure()
-            plt.xlim(left=np.min(OSNR_dB_vect) - 0.5, right=np.max(OSNR_dB_vect) - 0.5)
+            plt.xlim(left=np.min(OSNR_dB_vect) - 0.3, right=np.max(OSNR_dB_vect) - 0.5)
             for idx, (data_dict_first, data_dict_second) in enumerate(zip(load_npz_vect_first, load_npz_vect_second)):
                 marker = markers[idx % len(markers)]
                 color = colors[idx]
@@ -139,7 +139,7 @@ for plot_type, plot_type_dict in y_values_columns.items():
                         break
 
                     # Compute the mean ignoring NaNs
-                    filtered_curves.append(np.nanmean(y_filtered))
+                    filtered_curves.append(np.nanmin(y_filtered))
 
                 if all_osnr_valid:
                     current_curve = np.array(filtered_curves)
