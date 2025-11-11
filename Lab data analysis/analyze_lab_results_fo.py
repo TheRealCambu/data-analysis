@@ -179,8 +179,8 @@ def plot_multiple_ber(
 root_folder = (r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico"
                r"\Tesi\Data-analysis\Lab results\v4 - Processed Datasets -- Final OPT")
 tr_algo_list = ["Gardner", "Frequency Domain"]
-# baud_rate_and_mod_format_list = ["30GBd QPSK"]
-baud_rate_and_mod_format_list = ["30GBd 16QAM"]
+baud_rate_and_mod_format_list = ["30GBd QPSK"]
+# baud_rate_and_mod_format_list = ["30GBd 16QAM"]
 # baud_rate_and_mod_format_list = ["30GBd QPSK", "30GBd 16QAM"]
 
 sweep_type = 'fo'
@@ -271,7 +271,7 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
 
                     # Add EVM fec threshold
                     ber_filter = 2.01e-2
-                    # ber_filter = 2.3e-1
+                    # ber_filter = 5e-1
                     evm_filter = theoretical_evm_from_ber(ber_filter, M=const_cardinality)
                     print(evm_filter)
                     if evm_filter < 0:
@@ -295,7 +295,7 @@ for baud_rate_and_mod_format, osnr_dict in files_dict.items():
                         save_plot=True,
                         directory_to_save_images=folder_to_store_images,
                         base_string_for_saving_image=f"{key}_vs_fo",
-                        plot_max=False
+                        plot_max=True
                     )
 
 # tr_algo_list = ["Gardner", "Frequency Domain"]

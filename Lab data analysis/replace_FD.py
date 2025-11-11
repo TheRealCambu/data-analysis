@@ -45,10 +45,11 @@
 #                 print(f"⚠️ No 'FD' found in {file}")
 
 import os
+
 import cv2
+import numpy as np
 import pytesseract
 from PIL import Image, ImageDraw, ImageFont
-import numpy as np
 
 # Paths
 root_dir = r"C:\Users\39338\Downloads"

@@ -1,13 +1,22 @@
+# import numpy as np
+#
+# path = r"C:\Users\39338\Politecnico Di Torino Studenti Dropbox\Simone Cambursano\Politecnico\Tesi\Data-analysis\Simulation Sweeps\Rate Sweeps\Second Batch\results_16QAM_30.0GBaud_CRAlgo_fd.npz"
+#
+# temp = dict(np.load(path, allow_pickle=True))
+#
+# for key, value in temp.items():
+#     print(f"Key: {key}, Value: {value}")
+
+
 from typing import Union
 
 import numpy as np
 from scipy.special import erfc, erfcinv
 
-
-def theoretical_ber_vs_snr(snr: np.ndarray, M: int) -> np.ndarray:
+def theoretical_ber_vs_snr(snr: np.ndarray, M: int, diff_encoding: bool = False) -> np.ndarray:
     """ snr in linear units """
-    return 2 / np.log2(M) * (1 - 1 / np.sqrt(M)) * erfc(np.sqrt(3 * snr / 2 / (M - 1)))
-
+    ber = 2 / np.log2(M) * (1 - 1 / np.sqrt(M)) * erfc(np.sqrt(3 * snr / 2 / (M - 1)))
+    return (2 if diff_encoding else 1) * ber
 
 def osnr_to_snr(OSNR_vect: Union[np.ndarray, float], symbol_rate: float, input_type: str = "dB") -> np.ndarray:
     osnr = np.asarray(OSNR_vect, dtype=np.float32)
