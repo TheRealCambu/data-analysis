@@ -75,16 +75,33 @@ def plot_multiple_ber(
     label_info = label_dict.get(kind_of_plot, label_dict["ber"])
 
     plt.figure()
+    # Reference lines
+    if kind_of_plot == "ber":
+        plt.axhline(
+            fec_threshold, color='black',
+            # linestyle=':',
+            linewidth=2,
+            label=f"FEC threshold={fec_threshold:.0e}"
+        )
+    elif kind_of_plot == "evm":
+        plt.axhline(
+            fec_threshold * 100, color='black',
+            # linestyle=':',
+            linewidth=2,
+            label=f"FEC threshold={fec_threshold * 100:.2f}%"
+        )
     markers = ['o', 's', 'v', '^', 'd', 'x']
-    colors = plt.cm.tab10(np.linspace(0, 1, len(data_vectors)))
+    linestyles = ['-', (0, (5, 5)), (0, (1, 1))]
+    # colors = plt.cm.tab10(np.linspace(0.3, 1.0, len(data_vectors)))
+    colors = ["darkblue", "orangered"]
 
     vector_lengths = []
-    if alternative_plot == 'max':
-        plot_type = 'Maximum'
-    elif alternative_plot == 'min':
-        plot_type = 'Minimum'
-    else:
-        plot_type = 'Average'
+    # if alternative_plot == 'max':
+    #     plot_type = 'Maximum'
+    # elif alternative_plot == 'min':
+    #     plot_type = 'Minimum'
+    # else:
+    #     plot_type = 'Average'
 
     for idx, (data_vector, x_idx, x_data, legend_label) in enumerate(
             zip(data_vectors, x_values_sorted_indices_list, x_values_data_list, legend_labels)
@@ -114,6 +131,7 @@ def plot_multiple_ber(
         # Plot each dataset
         marker = markers[idx % len(markers)]
         color = colors[idx]
+        linestyle = linestyles[idx]
 
         if kind_of_plot == "ber":
             if alternative_plot == 'max':
@@ -130,9 +148,8 @@ def plot_multiple_ber(
                     )
                     # Final plot
                     plt.semilogy(
-                        x_data_filtered, filtered_data_max, marker + '-',
-                        color=color,
-                        label=f"{legend_label}{penalty_label}"
+                        x_data_filtered, filtered_data_max, marker=marker, linewidth=2.5,
+                        linestyle=linestyle, color=color, label=f"{legend_label}{penalty_label}"
                     )
                     vector_lengths.append(x_data_filtered)
             elif alternative_plot == 'min':
@@ -148,8 +165,8 @@ def plot_multiple_ber(
                         fec_threshold=fec_threshold,
                     )
                     plt.semilogy(
-                        x_data_filtered, filtered_data_min, marker + '-',
-                        color=color, label=f"{legend_label}{penalty_label}"
+                        x_data_filtered, filtered_data_min, marker=marker, linewidth=2.5,
+                        linestyle=linestyle, color=color, label=f"{legend_label}{penalty_label}"
                     )
                     vector_lengths.append(x_data_filtered)
             else:
@@ -162,10 +179,10 @@ def plot_multiple_ber(
                         fec_threshold=fec_threshold,
                     )
                     plt.semilogy(
-                        x_data_valid, data_mean, marker + '-',
-                        color=color, label=f"{legend_label}{penalty_label}"
+                        x_data_valid, data_mean, marker=marker, linewidth=2.5,
+                        linestyle=linestyle, color=color, label=f"{legend_label}{penalty_label}"
                     )
-                    plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
+                    # plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
                     vector_lengths.append(x_data_valid)
         elif kind_of_plot == "ber_evm":
             if alternative_plot == 'max':
@@ -174,19 +191,28 @@ def plot_multiple_ber(
                 filtered_data_max = data_max[mask]
                 if filtered_data_max.shape[0] > 2:
                     # Final plot
-                    plt.semilogy(x_data_filtered, filtered_data_max, marker + '-', color=color, label=f"{legend_label}")
+                    plt.semilogy(
+                        x_data_filtered, filtered_data_max, marker=marker, linewidth=2.5,
+                        linestyle=linestyle, color=color, label=f"{legend_label}"
+                    )
                     vector_lengths.append(x_data_filtered)
             elif alternative_plot == 'min':
                 mask = (data_min <= filter_threshold) & (data_min > 1e-32)
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_min = data_min[mask]
                 if filtered_data_min.shape[0] > 2:
-                    plt.semilogy(x_data_filtered, filtered_data_min, marker + '-', color=color, label=f"{legend_label}")
+                    plt.semilogy(
+                        x_data_filtered, filtered_data_min, marker=marker, linewidth=2.5,
+                        linestyle=linestyle, color=color, label=f"{legend_label}"
+                    )
                     vector_lengths.append(x_data_filtered)
             else:
                 if data_mean.shape[0] > 2:
-                    plt.semilogy(x_data_valid, data_mean, marker + '-', color=color, label=f"{legend_label}")
-                    plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
+                    plt.semilogy(
+                        x_data_valid, data_mean, marker=marker, linewidth=2.5,
+                        linestyle=linestyle, color=color, label=f"{legend_label}"
+                    )
+                    # plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
                     vector_lengths.append(x_data_valid)
         else:
             if alternative_plot == 'max':
@@ -195,8 +221,8 @@ def plot_multiple_ber(
                 filtered_data_max = data_max[mask]
                 if filtered_data_max.shape[0] > 2:
                     plt.plot(
-                        x_data_filtered, filtered_data_max * 100, marker + '-',
-                        color=color, label=f"{legend_label}"
+                        x_data_filtered, filtered_data_max * 100, marker=marker, linewidth=2.5,
+                        linestyle=linestyle, color=color, label=f"{legend_label}"
                     )
                     vector_lengths.append(x_data_filtered)
             elif alternative_plot == 'min':
@@ -205,45 +231,61 @@ def plot_multiple_ber(
                 filtered_data_min = data_min[mask]
                 if filtered_data_min.shape[0] > 2:
                     plt.plot(
-                        x_data_filtered, filtered_data_min * 100, marker + '-',
-                        color=color, label=f"{legend_label}"
+                        x_data_filtered, filtered_data_min * 100, marker=marker, linewidth=2.5,
+                        linestyle=linestyle, color=color, label=f"{legend_label}"
                     )
                     vector_lengths.append(x_data_filtered)
             else:
                 if data_mean.shape[0] > 2:
                     plt.plot(
-                        x_data_valid, data_mean * 100, marker + '-', color=color, label=f"{legend_label}")
-                    plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
+                        x_data_valid, data_mean * 100, marker=marker, linewidth=2.5,
+                        linestyle=linestyle, color=color, label=f"{legend_label}"
+                    )
+                    # plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
                     vector_lengths.append(x_data_valid)
 
     ################## QPSK #######################
     temp_min = np.min([np.min(x) for x in vector_lengths if len(x) > 0])
     temp_max = np.max([np.max(x) for x in vector_lengths if len(x) > 0])
     plt.xticks(np.arange(temp_min - 1, temp_max + 1, 1))
-    plt.xlim(left=9.15, right=17.5)  # 30 GBd
-    # plt.xlim(left=9.5, right=18.5)  # 34.28 GBd
-    # plt.xlim(left=10.5, right=20.1)  # 40 GBd
+    # plt.xlim(left=temp_min - 0.4, right=17.5)  # 30 GBd QPSK
+    # plt.xlim(left=temp_min - 0.4, right=18.5)  # 34.28 GBd QPSK
+    # plt.xlim(left=temp_min - 0.4, right=20.1)  # 40 GBd QPSK
+
+    # plt.xlim(left=temp_min - 0.5, right=23.7)  # 30 GBd 16QAM
+    plt.xlim(left=temp_min - 0.5, right=24.7)  # 34.28 GBd 16QAM
 
     if 'ber' in kind_of_plot:
         plt.semilogy(
-            x_values_dense, theory_value, '-.', color="darkred",
-            linewidth=2.0, label=f"Theoretical {label_info['title']}"
+            x_values_dense, theory_value,
+            # linestyle='-.',
+            color="green", linewidth=2.0, label=f"Theoretical {label_info['title']}"
         )
         if 'evm' in kind_of_plot:
             plt.xticks(np.arange(temp_min - 3, temp_max + 3, 3))
-            plt.xlim(left=10.5, right=39)
-            plt.ylim(top=8e-2, bottom=1e-21)  # 30 GBd
-            # plt.ylim(top=8e-2, bottom=1e-18)  # 34.28 GBd
-            # plt.ylim(top=8e-2, bottom=1e-15)  # 40 GBd
+            plt.xlim(left=temp_min - 1, right=38)
+            # plt.ylim(top=1e-1, bottom=1e-18)  # 30 GBd QPSK
+            # plt.ylim(top=1e-1, bottom=1e-16)  # 34.28 GBd QPSK
+            # plt.ylim(top=1e-1, bottom=1e-14)  # 40 GBd QPSK
+            # plt.ylim(top=5e-2, bottom=5e-6)  # 30 GBd 16QAM
+            plt.ylim(top=8e-2, bottom=3e-5)  # 34.28 GBd 16QAM
         else:
-            plt.ylim(top=8e-2, bottom=6e-5)
+            # plt.ylim(top=1e-1, bottom=6e-5)  #QPSK
+            # plt.ylim(top=1e-1, bottom=6e-5)
+            plt.ylim(top=9e-2, bottom=2e-3)
             # plt.ylim(top=8e-2, bottom=2e-3)
     else:
         plt.plot(
-            x_values_dense, theory_value * 100, '-.',
-            linewidth=2.0, color="darkred", label=f"Theoretical {label_info['title']}"
+            x_values_dense, theory_value * 100,
+            # linestyle='-.',
+            # linewidth=2.0, color="darkred", label=f"Theoretical {label_info['title']}"
+            color="green", linewidth=2, label=f"Theoretical {label_info['title']}"
         )
-        plt.ylim(top=60, bottom=15)
+        plt.yticks(np.arange(np.min(theory_value * 100) - 2, np.max(theory_value * 100) + 2, 2))
+        plt.xticks(np.arange(temp_min - 3, temp_max + 3, 3))
+        plt.xlim(left=temp_min - 1, right=38)
+        # plt.ylim(top=55, bottom=2) #QSPK
+        plt.ylim(top=25, bottom=0)  #16QAM
 
     # #################### 16QAM #######################
     # temp_min = np.min([np.min(x) for x in vector_lengths if len(x) > 0])
@@ -276,22 +318,11 @@ def plot_multiple_ber(
     #     )
     #     plt.ylim(top=26, bottom=4)
 
-    # Reference lines
-    if kind_of_plot == "ber":
-        plt.axhline(
-            fec_threshold, color='darkred', linestyle=':', linewidth=2.5,
-            label=f"FEC threshold={fec_threshold:.0e}"
-        )
-    elif kind_of_plot == "evm":
-        plt.axhline(
-            fec_threshold * 100, color='darkred', linestyle=':', linewidth=2.5,
-            label=f"FEC threshold={fec_threshold * 100:.2f}%"
-        )
-
     # Labels and title
     plt.xlabel("OSNR [dB] per 0.1nm")
     plt.ylabel(label_info["ylabel"])
-    plt.title(f"{plot_type} {label_info['title']} vs OSNR {extra_title_label}")
+    # plt.title(f"{plot_type} {label_info['title']} vs OSNR {extra_title_label}")
+    plt.title(f"{label_info['title']} vs OSNR {extra_title_label}")
     plt.legend(loc="best")
     plt.grid(True, which="both")
     plt.tight_layout()
@@ -321,11 +352,11 @@ tr_algo_list = ["Gardner", "Frequency Domain"]
 # baud_rate_and_mod_format_list = ["30GBd QPSK", "34.28GBd QPSK", "40GBd QPSK", "30GBd 16QAM", "34.28GBd 16QAM"]
 # tr_algo_list = ["Gardner"]
 # tr_algo_list = ["Frequency Domain"]
-baud_rate_and_mod_format_list = ["30GBd QPSK"]
+# baud_rate_and_mod_format_list = ["30GBd QPSK"]
 # baud_rate_and_mod_format_list = ["34.28GBd QPSK"]
 # baud_rate_and_mod_format_list = ["40GBd QPSK"]
 # baud_rate_and_mod_format_list = ["30GBd 16QAM"]
-# baud_rate_and_mod_format_list = ["34.28GBd 16QAM"]
+baud_rate_and_mod_format_list = ["34.28GBd 16QAM"]
 
 sweep_type = 'osnr'
 folder_to_store_images = os.path.join(root_folder, "Final Plots", sweep_type.upper())
@@ -415,6 +446,7 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
             apply_plt_personal_settings()
 
             for kind_of_plot in ["ber", "evm"]:
+                # for kind_of_plot in ["ber", "evm"]:
                 # for kind_of_plot in ["ber", "evm", "ber_evm"]:
                 theory_value = {
                     "ber": ber_theory,
@@ -422,7 +454,8 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
                     "ber_evm": ber_evm_theory
                 }[kind_of_plot]
 
-                for polarization in ["_tot", "_x", "_y"]:
+                # for polarization in ["_tot", "_x", "_y"]:
+                for polarization in ["_tot"]:
                     key = kind_of_plot + polarization
                     if polarization == "_x":
                         temp = title_label_for_plot_tot + ", X Pol)"
@@ -432,7 +465,7 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
                         temp = title_label_for_plot_tot + ")"
 
                     # ber_filter = 1e-1
-                    ber_filter = 5e-1
+                    ber_filter = 0.5
                     evm_filter = theoretical_evm_from_ber(ber_filter, M=const_cardinality)
                     if evm_filter < 0:
                         evm_filter = 150 / 100
@@ -454,7 +487,7 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
                         theory_value=theory_value,
                         extra_title_label=temp,
                         legend_labels=["DPE OFF", "DPE ON"],
-                        save_plot=False,
+                        save_plot=True,
                         directory_to_save_images=folder_to_store_images,
                         base_string_for_saving_image=f"{key}_vs_osnr",
                         alternative_plot="min"

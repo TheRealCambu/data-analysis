@@ -88,19 +88,19 @@ def plot_multiple_ber(
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_max = data_max[mask]
                 plt.semilogy(x_data_filtered, filtered_data_max, marker + '-', color=color, label=f"{legend_label}")
-                temp = 'Maximum'
+                # temp = 'Maximum'
                 vector_lengths.append(x_data_filtered)
             elif alternative_plot == 'min':
                 mask = (data_min <= filter_threshold) & (data_min > 1e-32)
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_min = data_min[mask]
                 plt.semilogy(x_data_filtered, filtered_data_min, marker + '-', color=color, label=f"{legend_label}")
-                temp = 'Minimum'
+                # temp = 'Minimum'
                 vector_lengths.append(x_data_filtered)
             else:
                 plt.semilogy(x_data_valid, data_mean, marker + '-', color=color, label=f"{legend_label}")
-                plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
-                temp = 'Average'
+                # plt.fill_between(x_data_valid, data_min, data_max, alpha=0.2, color=color)
+                # temp = 'Average'
                 vector_lengths.append(x_data_valid)
         else:
             if alternative_plot == 'max':
@@ -108,7 +108,7 @@ def plot_multiple_ber(
                 x_data_filtered = x_data_valid[mask]
                 filtered_data_max = data_max[mask]
                 plt.plot(x_data_filtered, filtered_data_max * 100, marker + '-', color=color, label=f"{legend_label}")
-                temp = 'Maximum'
+                # temp = 'Maximum'
                 vector_lengths.append(x_data_filtered)
             elif alternative_plot == 'min':
                 mask = (data_min <= filter_threshold) & (data_min > 1e-32)
@@ -117,12 +117,12 @@ def plot_multiple_ber(
                 plt.plot(x_data_filtered, filtered_data_min, marker + '-', color=color, label=f"{legend_label}")
                 # plt.yticks(np.arange(np.min(filtered_data_min * 100) - 2, np.max(filtered_data_min * 100) + 2, 8))
                 plt.yticks(np.arange(np.min(filtered_data_min) - 1, np.max(filtered_data_min) + 1, 2))
-                temp = 'Minimum'
+                # temp = 'Minimum'
                 vector_lengths.append(x_data_filtered)
             else:
                 plt.plot(x_data_valid, data_mean * 100, marker + '-', color=color, label=f"{legend_label}")
-                plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
-                temp = 'Average'
+                # plt.fill_between(x_data_valid, data_min * 100, data_max * 100, alpha=0.2, color=color)
+                # temp = 'Average'
                 vector_lengths.append(x_data_valid)
 
     temp_min = np.min([np.min(x) for x in vector_lengths if len(x) > 0])
@@ -173,6 +173,7 @@ def plot_multiple_ber(
     # Labels and title
     plt.xlabel("ROP [dBm]")
     plt.ylabel(label_info["ylabel"])
+    # plt.title(f"{temp} {label_info['title']} vs ROP {extra_title_label}")
     plt.title(f"{temp} {label_info['title']} vs ROP {extra_title_label}")
     plt.legend(loc="best")
     plt.grid(True, which="both")
