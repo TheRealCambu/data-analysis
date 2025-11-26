@@ -154,7 +154,6 @@ groups = df.groupby(['mod_order', 'clock_recovery_algo'])
 # Apply personal matplotlib settings
 apply_plt_personal_settings()
 
-
 for modulation_label, bits_per_symbol in mod_order.items():
     for sweep_key, sweep_info in sweep_columns_dict.items():
         xlabel = sweep_info['xlabel']
@@ -195,8 +194,7 @@ for modulation_label, bits_per_symbol in mod_order.items():
 
                 # Convert string arrays to numeric and take mean, min, and max per row
                 y_array = df_slice[y_value_key].apply(
-                    lambda s: np.array(s if isinstance(s, (list, np.ndarray))
-                                       else np.fromstring(s.strip('[]'), sep=' '))
+                    lambda s: np.array(s if isinstance(s, (list, np.ndarray)) else np.fromstring(s.strip('[]'), sep=' '))
                 )
                 y_mean = y_array.apply(np.mean)
                 y_min = y_array.apply(np.min)

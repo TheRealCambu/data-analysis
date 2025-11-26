@@ -129,33 +129,33 @@ def plot_multiple_ber(
     temp_max = np.max([np.max(x) for x in vector_lengths if len(x) > 0])
 
     ############# QPSK ##############
-    plt.xticks(np.arange(temp_min - 1, temp_max + 2, 2))
-    plt.xlim(right=-15)
-    # if 'evm' not in kind_of_plot:
-    #     # plt.xticks(np.arange(temp_min, temp_max, 4))
-    #     plt.xticks(np.arange(temp_min - 0.6, temp_max + 0.6, 1))
-    #     plt.xlim(right=-28.3)
-    #     # plt.xlim(right=-29)
-    #     plt.ylim(bottom=9e-6)
-    # else:
-    #     plt.xticks(np.arange(temp_min, temp_max, 4))
+    # plt.xticks(np.arange(temp_min - 1, temp_max + 2, 2))
+    # plt.xlim(right=-15)
+    if 'evm' not in kind_of_plot:
+        # plt.xticks(np.arange(temp_min, temp_max, 4))
+        plt.xticks(np.arange(temp_min - 0.6, temp_max + 0.6, 1))
+        plt.xlim(right=-28.3)
+        # plt.xlim(right=-29)
+        plt.ylim(bottom=9e-6)
+    else:
+        plt.xticks(np.arange(temp_min, temp_max, 4))
 
-    # plt.xticks(np.arange(temp_min - 0.6, temp_max + 3, 2))
-    # plt.xlim(left=-33, right=-15.5)
-    # if 'evm' in kind_of_plot:
-    #     plt.ylim(top=21, bottom=7)
-    # else:
-    #     plt.ylim(top=5e-2, bottom=8e-6)
+    plt.xticks(np.arange(temp_min - 0.6, temp_max + 3, 2))
+    plt.xlim(left=-33, right=-15.5)
+    if 'evm' in kind_of_plot:
+        plt.ylim(top=21, bottom=7)
+    else:
+        plt.ylim(top=5e-2, bottom=8e-6)
 
-    # # This is for plotting evm and ber_evm with a zoom between -39 and -18
-    # if 'ber' in kind_of_plot:
-    #     plt.xticks(np.arange(temp_min - 0.6, temp_max + 0.6, 3))
-    #     plt.xlim(right=-18)
-    #     plt.ylim(bottom=1e-16)
-    # else:
-    #     plt.xticks(np.arange(temp_min - 0.6, temp_max + 0.6, 3))
-    #     plt.xlim(right=-18)
-    #     plt.ylim(bottom=8)
+    # This is for plotting evm and ber_evm with a zoom between -39 and -18
+    if 'ber' in kind_of_plot:
+        plt.xticks(np.arange(temp_min - 0.6, temp_max + 0.6, 3))
+        plt.xlim(right=-18)
+        plt.ylim(bottom=1e-16)
+    else:
+        plt.xticks(np.arange(temp_min - 0.6, temp_max + 0.6, 3))
+        plt.xlim(right=-18)
+        plt.ylim(bottom=8)
     ########################################################################
 
     # Reference lines
@@ -204,11 +204,11 @@ apply_plt_personal_settings()
 
 # One .npz per algorithm and configuration
 files_dict = {
-    # "30GBd QPSK": {
-    #     "Gardner": os.path.join(root_folder, "Gardner", "30GBd QPSK", "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz"),
-    #     "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd QPSK",
-    #                                      "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz")
-    # },
+    "30GBd QPSK": {
+        "Gardner": os.path.join(root_folder, "Gardner", "30GBd QPSK", "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz"),
+        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "30GBd QPSK",
+                                         "PROCESSED_rop_sweep_30GBd_DP_QPSK_w_dpe_v1.npz")
+    },
     # "30GBd 16QAM": {
     #     "Gardner": os.path.join(root_folder, "Gardner", "30GBd 16QAM",
     #                             "PROCESSED_rop_sweep_30GBd_DP_16QAM_w_dpe_v1.npz"),
@@ -221,12 +221,12 @@ files_dict = {
     #     "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd QPSK",
     #                                      "PROCESSED_rop_sweep_34_28GBd_DP_QPSK_w_dpe_v1.npz")
     # },
-    "34.28GBd 16QAM": {
-        "Gardner": os.path.join(root_folder, "Gardner", "34.28GBd 16QAM",
-                                "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz"),
-        "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd 16QAM",
-                                         "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz")
-    },
+    # "34.28GBd 16QAM": {
+    #     "Gardner": os.path.join(root_folder, "Gardner", "34.28GBd 16QAM",
+    #                             "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz"),
+    #     "Frequency Domain": os.path.join(root_folder, "Frequency Domain", "34.28GBd 16QAM",
+    #                                      "PROCESSED_rop_sweep_34_28GBd_DP_16QAM_w_dpe_v1.npz")
+    # },
 }
 
 # --- Main plotting loop ---
@@ -260,8 +260,8 @@ for baud_rate_and_mod_format, algo_files in files_dict.items():
 
         # for kind_of_plot in ['ber', 'evm', 'ber_evm']:
         for kind_of_plot in ['ber', 'evm']:
-        # for kind_of_plot in ['evm', 'ber_evm']:
-        # for kind_of_plot in ['ber']:
+            # for kind_of_plot in ['evm', 'ber_evm']:
+            # for kind_of_plot in ['ber']:
             for polarization in ['_tot', '_x', '_y']:
                 key = kind_of_plot + polarization
                 if polarization == '_x':
@@ -270,8 +270,8 @@ for baud_rate_and_mod_format, algo_files in files_dict.items():
                     final_title_label = title_label_for_plot_tot + ', Y Pol)'
                 else:
                     final_title_label = title_label_for_plot_tot + ')'
-                # ber_filter = 5e-1
-                ber_filter = 4e-2
+                ber_filter = 5e-1
+                # ber_filter = 4e-2
                 evm_filter = theoretical_evm_from_ber(ber_filter, M=const_cardinality)
                 if evm_filter < 0:
                     evm_filter = 150 / 100
@@ -289,7 +289,7 @@ for baud_rate_and_mod_format, algo_files in files_dict.items():
                     x_values_data_list=[x_values_data_gardner, x_values_data_fd],
                     extra_title_label=final_title_label,
                     legend_labels=["Gardner", "Fast timing-square"],
-                    save_plot=True,
+                    save_plot=False,
                     directory_to_save_images=folder_to_store_images,
                     base_string_for_saving_image=f"{key}_vs_rop",
                     alternative_plot="min"

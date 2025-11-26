@@ -219,8 +219,8 @@ def plot_results_rop(
         directory_to_save_images: str,
 
         fec_threshold: float = 2e-2,
-        # ber_filter_threshold: float = 5e-1,
-        ber_filter_threshold: float = 1e-1,
+        ber_filter_threshold: float = 5e-1,
+        # ber_filter_threshold: float = 1e-1,
 
         evm_filter_threshold=4.0,
         # evm_filter_threshold=1.2,

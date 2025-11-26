@@ -297,7 +297,8 @@ def plot_multiple_ber(
     plt.tight_layout()
 
     if save_plot:
-        image_name = filename.replace("PROCESSED_osnr_sweep", "").replace(".npz", "").replace("_wo_dpe_v1", "").replace("_w_dpe_v1", "")
+        image_name = filename.replace("PROCESSED_osnr_sweep", "").replace(".npz", "").replace("_wo_dpe_v1", "").replace(
+            "_w_dpe_v1", "")
         if alternative_plot in ["min", "max"]:
             base_string_for_saving_image = f"{alternative_plot}_" + base_string_for_saving_image
         full_path = os.path.join(
@@ -320,11 +321,11 @@ tr_algo_list = ["Gardner", "Frequency Domain"]
 # baud_rate_and_mod_format_list = ["30GBd QPSK", "34.28GBd QPSK", "40GBd QPSK", "30GBd 16QAM", "34.28GBd 16QAM"]
 # tr_algo_list = ["Gardner"]
 # tr_algo_list = ["Frequency Domain"]
-# baud_rate_and_mod_format_list = ["30GBd QPSK"]
+baud_rate_and_mod_format_list = ["30GBd QPSK"]
 # baud_rate_and_mod_format_list = ["34.28GBd QPSK"]
 # baud_rate_and_mod_format_list = ["40GBd QPSK"]
 # baud_rate_and_mod_format_list = ["30GBd 16QAM"]
-baud_rate_and_mod_format_list = ["34.28GBd 16QAM"]
+# baud_rate_and_mod_format_list = ["34.28GBd 16QAM"]
 
 sweep_type = 'osnr'
 folder_to_store_images = os.path.join(root_folder, "Final Plots", sweep_type.upper())
@@ -414,7 +415,7 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
             apply_plt_personal_settings()
 
             for kind_of_plot in ["ber", "evm"]:
-            # for kind_of_plot in ["ber", "evm", "ber_evm"]:
+                # for kind_of_plot in ["ber", "evm", "ber_evm"]:
                 theory_value = {
                     "ber": ber_theory,
                     "evm": evm_theory,
@@ -453,7 +454,7 @@ for baud_rate_and_mod_format, algo_dict in files_dict.items():
                         theory_value=theory_value,
                         extra_title_label=temp,
                         legend_labels=["DPE OFF", "DPE ON"],
-                        save_plot=True,
+                        save_plot=False,
                         directory_to_save_images=folder_to_store_images,
                         base_string_for_saving_image=f"{key}_vs_osnr",
                         alternative_plot="min"

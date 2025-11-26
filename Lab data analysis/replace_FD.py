@@ -54,6 +54,8 @@ from PIL import Image, ImageDraw, ImageFont
 # Paths
 root_dir = r"C:\Users\39338\Downloads"
 font = ImageFont.truetype("arial.ttf", 88)
+string_to_substitute = "Real"
+replacement_string = "Ideal"
 
 # Tesseract path (Windows)
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
@@ -69,10 +71,10 @@ def preprocess_image(cv_img, kernel_size=2, thresh=180):
 
 
 # Find indexes of "FD"
-def find_fd(data):
+def find_string(data, string):
     indices = []
     for i, txt in enumerate(data['text']):
-        if txt.strip().upper() == "FD":
+        if string in txt.strip().upper():
             indices.append(i)
     return indices
 
@@ -89,11 +91,13 @@ for subdir_name in os.listdir(root_dir):
 
     # Collect PNG images in the current subfolder
     image_files = [f for f in os.listdir(current_folder) if f.lower().endswith(".png")]
+    print(image_files)
     total_images = len(image_files)
     print(f"\nProcessing folder: {subdir_name}")
     print(f"Total images found: {total_images}")
 
     for file in image_files:
+        print(file)
         img_path = os.path.join(current_folder, file)
         img = cv2.imread(img_path)
 
@@ -103,11 +107,17 @@ for subdir_name in os.listdir(root_dir):
 
         replaced = False
         # Try multiple preprocessing parameters
-        for kernel_size in [1, 2, 3, 4]:
-            for thresh in range(100, 221, 1):
+        for kernel_size in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
+            for thresh in range(10, 300, 1):
+                print(f"Kernel size: {kernel_size} + Threshold: {thresh}")
                 proc_img = preprocess_image(img, kernel_size=kernel_size, thresh=thresh)
-                data = pytesseract.image_to_data(proc_img, output_type=pytesseract.Output.DICT)
-                fd_indices = find_fd(data)
+                # data = pytesseract.image_to_data(proc_img, output_type=pytesseract.Output.DICT)
+                data = pytesseract.image_to_data(
+                    proc_img,
+                    output_type=pytesseract.Output.DICT,
+                    config='--psm 6'
+                )
+                fd_indices = find_string(data, string_to_substitute)
                 if fd_indices:
                     pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
                     draw = ImageDraw.Draw(pil_img)
@@ -116,7 +126,7 @@ for subdir_name in os.listdir(root_dir):
                         x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
                         padding = 0
                         draw.rectangle([(x - padding, y - padding), (x + w + padding, y + h + padding)], fill="white")
-                        draw.text((x - 8, y - 21), "Fast square-timing", font=font, fill="black")
+                        draw.text((x - 8, y - 21), replacement_string, font=font, fill="black")
 
                     # Save fixed image in Fixed folder
                     result_path = os.path.join(fixed_folder, file)
@@ -128,7 +138,7 @@ for subdir_name in os.listdir(root_dir):
                 break
 
         if not replaced:
-            print(f"⚠️ Could not find 'FD' in {file} with any preprocessing parameters.")
+            print(f"⚠️ Could not find {string_to_substitute} in {file} with any preprocessing parameters.")
 
     fixed_count = len([f for f in os.listdir(fixed_folder) if f.lower().endswith(".png")])
     print(f"Finished processing folder: {subdir_name}. Fixed {fixed_count}/{total_images} images.")

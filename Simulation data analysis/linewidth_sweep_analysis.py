@@ -83,6 +83,7 @@ for mod_format in mod_format_vect:
                 try:
                     current_path = os.path.join(folder_path, current_npz_file)
                     loaded_data = dict(np.load(current_path, allow_pickle=True))
+                    print(loaded_data)
                     if plot_type == "berTot":
                         y_valueTheory = loaded_data['berTheory']
                     elif plot_type == "EVMTot":

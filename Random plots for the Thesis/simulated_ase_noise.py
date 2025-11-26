@@ -18,38 +18,31 @@ Rs = 32e9  # symbol rate [baud]
 alpha = 0.2  # roll-off factor
 c = 3e8  # speed of light [m/s]
 
+# Receiver electrical noise
+electrical_noise_dBm_per_Hz = -170  # typical thermal noise floor
+receiver_bandwidth_Hz = Rs * (1 + alpha)  # bandwidth of the filter
+
 # -------------------------------------------------------------------
-# Wavelength grid and frequency grid
+# Wavelength and frequency grid
 # -------------------------------------------------------------------
 lambdas = np.linspace(lambda_min, lambda_max, n_points)
 freqs = c / lambdas
 f_center = c / lambda_center
-f_span = np.max(freqs) - np.min(freqs)
 df = np.abs(freqs[1] - freqs[0])
-
-# frequency axis centered at f_center
 freqs_shifted = freqs - f_center
 
 # -------------------------------------------------------------------
-# 1. Root Raised Cosine spectral shape - work directly in wavelength
+# RRC spectrum in wavelength domain
 # -------------------------------------------------------------------
-# Convert symbol rate to wavelength bandwidth
-delta_f = Rs * (1 + alpha)  # total bandwidth in Hz
-delta_lambda = (lambda_center ** 2 / c) * delta_f  # corresponding wavelength span
-
-# Use wavelength detuning
+delta_lambda = (lambda_center ** 2 / c) * Rs * (1 + alpha)
 lambda_detuning = lambdas - lambda_center
 
 
 def rrc_spectrum_wavelength(delta_lambda, Rs, alpha, lambda_0):
-    """RRC shape directly in wavelength domain."""
-    # Convert to equivalent frequency detuning
     delta_f_equiv = (c / lambda_0 ** 2) * np.abs(delta_lambda)
-
     H = np.zeros_like(delta_f_equiv)
     f1 = (1 - alpha) * Rs / 2
     f2 = (1 + alpha) * Rs / 2
-
     H[delta_f_equiv <= f1] = 1.0
     idx = (delta_f_equiv > f1) & (delta_f_equiv < f2)
     H[idx] = 0.5 * (1 + np.cos(np.pi / (alpha * Rs) * (delta_f_equiv[idx] - f1)))
@@ -57,58 +50,75 @@ def rrc_spectrum_wavelength(delta_lambda, Rs, alpha, lambda_0):
 
 
 signal = rrc_spectrum_wavelength(lambda_detuning, Rs, alpha, lambda_center)
-
-# Normalize to 1 mW
 signal /= np.trapezoid(signal, lambdas)
-signal *= 1e-3
+signal *= 1e-3  # 1 mW peak
 
 # -------------------------------------------------------------------
-# 2. ASE noise (flat within 4 nm)
+# ASE noise + realistic floor
 # -------------------------------------------------------------------
 ase_total_power = 1e-6  # -30 dBm total ASE over 4 nm
-ase = np.ones_like(lambdas)
-ase_slice = (lambdas > (lambda_center - bandwidth_nm / 2 * 1e-9)) & \
-            (lambdas < (lambda_center + bandwidth_nm / 2 * 1e-9))
-ase *= ase_slice.astype(float)
-ase /= np.trapezoid(ase, lambdas)
-ase *= ase_total_power
+ase_floor_power = 1e-14  # -140 dBm outside ASE band
+
+ase = np.ones_like(lambdas) * ase_floor_power
+ase_slice = ((lambdas > (lambda_center - bandwidth_nm / 2 * 1e-9)) &
+             (lambdas < (lambda_center + bandwidth_nm / 2 * 1e-9)))
+
+# normalize ASE inside the band
+ase_inside = np.ones_like(lambdas[ase_slice])
+ase_inside /= np.trapezoid(ase_inside, lambdas[ase_slice])
+ase_inside *= ase_total_power
+ase[ase_slice] = ase_inside
 
 # -------------------------------------------------------------------
-# 3. Combined spectrum
+# Add receiver electrical noise
 # -------------------------------------------------------------------
-spectrum_total = signal + ase
+# convert dBm/Hz to linear Watts
+noise_power_W = 10 ** ((electrical_noise_dBm_per_Hz - 30) / 10) * receiver_bandwidth_Hz
+electrical_noise = np.ones_like(lambdas) * noise_power_W
 
-# Normalize so that max = 0 dBm (visual)
+# -------------------------------------------------------------------
+# Total spectrum
+# -------------------------------------------------------------------
+spectrum_total = signal + ase + electrical_noise
+
+# Normalize so that max = 0 dBm (for visualization)
 scaling_factor = 1e-3 / np.max(spectrum_total)
 signal *= scaling_factor
 ase *= scaling_factor
-spectrum_total = signal + ase
+electrical_noise *= scaling_factor
+spectrum_total = signal + ase + electrical_noise
 
 # -------------------------------------------------------------------
-# 4. Compute OSNR (0.1 nm reference)
+# OSNR calculation (0.1 nm reference)
 # -------------------------------------------------------------------
-ase_band = (lambdas > (lambda_center - delta_lambda / 2)) & \
-           (lambdas < (lambda_center + delta_lambda / 2))
+ase_band = ((lambdas > (lambda_center - delta_lambda / 2)) &
+            (lambdas < (lambda_center + delta_lambda / 2)))
 p_ase_0_1nm = np.trapezoid(ase[ase_band], lambdas[ase_band])
 p_signal = np.trapezoid(signal, lambdas)
 OSNR_dB = 10 * np.log10(p_signal / p_ase_0_1nm)
 print(f"Simulated OSNR ≈ {OSNR_dB:.2f} dB")
 
 # -------------------------------------------------------------------
-# 5. Plot
+# Plot
 # -------------------------------------------------------------------
 plt.figure()
-plt.plot(lambdas * 1e9, 10 * np.log10(signal / 1e-3), label='RRC Signal')
-plt.plot(lambdas * 1e9, 10 * np.log10(ase / 1e-3), label='ASE noise')
-plt.plot(lambdas * 1e9, 10 * np.log10(spectrum_total / 1e-3), label='Signal + ASE')
-plt.axvspan((lambda_center - 2e-9) * 1e9, (lambda_center + 2e-9) * 1e9,
-            color='gray', alpha=0.2, label='4 nm ASE slice')
-plt.ylim(-50, 5)
-plt.xlim(1546.5, 1553.5)
+plt.plot(lambdas * 1e9, 10 * np.log10(signal / 1e-3),
+         label='RRC Signal', color='blue', lw=2)
+plt.plot(lambdas * 1e9, 10 * np.log10(ase / 1e-3),
+         label='ASE noise', color='red', lw=2, ls='--')
+plt.plot(lambdas * 1e9, 10 * np.log10(electrical_noise / 1e-3),
+         label='Electrical noise', color='green', lw=2, ls=':')
+plt.plot(lambdas * 1e9, 10 * np.log10(spectrum_total / 1e-3),
+         label='Total Spectrum', color='black', lw=2, ls='-.')
+plt.axvspan((lambda_center - bandwidth_nm / 2 * 1e-9) * 1e9,
+            (lambda_center + bandwidth_nm / 2 * 1e-9) * 1e9,
+            color='gray', alpha=0.2, label='WaveShaper 4nm band')
+plt.ylim(-170, 3)
+plt.xlim(1547.5, 1552.5)
 plt.xlabel("Wavelength [nm]")
 plt.ylabel("Power Spectral Density [dBm]")
-plt.title(f"RRC-shaped Signal + EDFA ASE Noise — OSNR ≈ {OSNR_dB:.1f} dB")
-plt.legend()
-plt.grid(True, which="both")
+plt.title(f"Transmitted Spectrum — OSNR ≈ {OSNR_dB:.1f} dB")
+plt.grid(True, which='both')
+plt.legend(loc="best")
 plt.tight_layout()
 plt.show()
